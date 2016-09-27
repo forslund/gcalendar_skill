@@ -16,8 +16,8 @@ from oauth2client.client import OAuth2WebServerFlow
 
 import datetime as dt
 import os
-from os.path import dirname
-
+from os.path import dirname, abspath
+import sys
 from mycroft.util.log import getLogger
 logger = getLogger(dirname(__name__))
 
@@ -59,6 +59,8 @@ def get_credentials():
                                 user_agent=APP_NAME + '/' + VERSION),
 store)
         print 'Storing credentials to ' + credential_path
+    else:
+        print 'Loaded credentials from store'
     return credentials
 
 
@@ -69,9 +71,12 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def _calendar_connect(self, msg=None):
         print "getting credentials"
+        argv = sys.argv
+        sys.argv = []
         self.credentials = get_credentials()
         http = self.credentials.authorize(httplib2.Http())
         self.service = discovery.build('calendar', 'v3', http=http)
+        sys.argv = argv
         intent = IntentBuilder('GetNextAppointment')\
             .require('NextKeyword')\
             .require('AppointmentKeyword')\
