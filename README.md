@@ -6,6 +6,12 @@ Currently this only supports a few intents and are read-only
 
 ## Installation
 
+Enter the mycroft virtualenv amd go to the third party skill directory
+```
+  workon mycroft
+  cd [THIRD PARTY SKILL DIRECTORY]
+```
+
 Clone the git repository
 ```
   git clone https://github.com/forslund/gcalendar_skill.git
@@ -13,21 +19,19 @@ Clone the git repository
 
 Install prerequisites into the mycroft environment
 ```
-  workon mycroft
-  cd gcalendar_skill
-  pip install -r requirements.txt
+  pip install -r gcalendar_skill/requirements.txt
 ```
 
 Authorize access to google calendar.
 ```
-python ./
+  python gcalendar_skill
 ```
 
 Above will open a web-browser where you will have to approve access.
 
 If the machine running the skill is headless instead run
 ```
-python ./ --noauth_local_webserver
+  python gcalendar_skill --noauth_local_webserver
 ```
 
 You will now be given a link. Paste this into a web browser to retreive an authoriation code to enter into the command line.
