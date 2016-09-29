@@ -5,16 +5,16 @@ path = os.path.join(path, '..')
 sys.path.insert(0, path)
 from gcalendar_skill import *
 
-"""Shows basic usage of the Google Calendar API.
 
-Creates a Google Calendar API service object and outputs a list of the next
-10 events on the user's calendar.
+"""Handles basic authentication and provides feedback in form of upcoming
+   events (if any) after completion.
 """
+
 credentials = get_credentials()
 http = credentials.authorize(httplib2.Http())
 service = discovery.build('calendar', 'v3', http=http)
 
-now = dt.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+now = dt.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
 print('Getting the upcoming 10 events')
 eventsResult = service.events().list(
     calendarId='primary', timeMin=now, maxResults=10, singleEvents=True,

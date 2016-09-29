@@ -15,6 +15,8 @@ import os
 from os.path import dirname, abspath
 import sys
 from mycroft.util.log import getLogger
+
+
 logger = getLogger(dirname(__name__))
 sys.path.append(abspath(dirname(__file__)))
 
@@ -23,6 +25,7 @@ __author__ = 'forslund'
 
 def is_today(d):
     return d.date() == dt.datetime.today().date()
+
 
 def is_tomorrow(d):
     return d.date() == dt.datetime.today().date() + dt.timedelta(days=1)
@@ -34,6 +37,7 @@ SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 
 APP_NAME = 'Google Calendar Mycroft Skill'
 VERSION = '0.1dev'
+
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -61,7 +65,7 @@ def get_credentials():
                                 client_secret=SSTRING,
                                 scope=SCOPES,
                                 user_agent=APP_NAME + '/' + VERSION),
-store)
+            store)
         print 'Storing credentials to ' + credential_path
     else:
         print 'Loaded credentials from store'
@@ -71,7 +75,6 @@ store)
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
-    
 
     def _calendar_connect(self, msg=None):
         argv = sys.argv
@@ -113,10 +116,10 @@ class GoogleCalendarSkill(MycroftSkill):
         self.emitter.emit(Message(self.name + '.calendar_connect'))
 
     def get_next(self, msg=None):
-        now = dt.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+        now = dt.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         eventsResult = self.service.events().list(
-            calendarId='primary', timeMin=now, maxResults=10, singleEvents=True,
-            orderBy='startTime').execute()
+            calendarId='primary', timeMin=now, maxResults=10,
+            singleEvents=True, orderBy='startTime').execute()
         events = eventsResult.get('items', [])
 
         if not events:
@@ -141,7 +144,7 @@ class GoogleCalendarSkill(MycroftSkill):
                 self.speak_dialog('NextAppointmentDate', data)
 
     def get_today(self, msg=None):
-        now = dt.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+        now = dt.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         day_end = dt.datetime.utcnow().replace(hour=23, minute=59, second=59)
         day_end = day_end.isoformat() + 'Z'
         self.speak_interval(now, day_end)
@@ -156,7 +159,6 @@ class GoogleCalendarSkill(MycroftSkill):
         tomorrow_end += dt.timedelta(days=1)
         tomorrow_end = tomorrow_end.isoformat() + 'Z'
         self.speak_interval(tomorrow, tomorrow_end)
-
 
     def speak_interval(self, start, stop):
         eventsResult = self.service.events().list(
@@ -183,6 +185,7 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def get_day(self, msg=None):
         return
+
 
 def create_skill():
     return GoogleCalendarSkill()
