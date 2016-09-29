@@ -80,6 +80,8 @@ class GoogleCalendarSkill(MycroftSkill):
         http = self.credentials.authorize(httplib2.Http())
         self.service = discovery.build('calendar', 'v3', http=http)
         sys.argv = argv
+
+        self.load_data_files(dirname(__file__))
         intent = IntentBuilder('GetNextAppointment')\
             .require('NextKeyword')\
             .require('AppointmentKeyword')\
@@ -118,17 +120,25 @@ class GoogleCalendarSkill(MycroftSkill):
         events = eventsResult.get('items', [])
 
         if not events:
-            self.speak('No upcoming events scheduled')
+            self.speak_dialog('NoNextAppointments')
         else:
             event = events[0]
             start = event['start'].get('dateTime', event['start'].get('date'))
             d = dt.datetime.strptime(start.split('+')[0], '%Y-%m-%dT%H:%M:%S')
-            starttime = d.strftime('%H %M')
+            starttime = d.strftime('%H . %M')
             if d.date() == dt.datetime.today().date():
-                self.speak(event['summary'] + ' at ' + starttime)
+                data = {'appointment': event['summary'],
+                        'time': starttime}
+                self.speak_dialog('NextAppointment', data)
+            elif is_tomorrow(d):
+                data = {'appointment': event['summary'],
+                        'time': starttime}
+                self.speak_dialog('NextAppointmentTomorrow', data)
             else:
-                startdate = d.strftime('%A the %-d of %B')
-                self.speak(event['summary'] + ' at ' + starttime + startdate)
+                data = {'appointment': event['summary'],
+                        'time': starttime,
+                        'date': startdate}
+                self.speak_dialog('NextAppointmentDate', data)
 
     def get_today(self, msg=None):
         now = dt.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
@@ -149,23 +159,27 @@ class GoogleCalendarSkill(MycroftSkill):
 
 
     def speak_interval(self, start, stop):
-        print start, stop
-        print type(start), type(stop)
         eventsResult = self.service.events().list(
             calendarId='primary', timeMin=start, timeMax=stop,
             singleEvents=True, orderBy='startTime').execute()
         events = eventsResult.get('items', [])
         if not events:
-            self.speak('No upcoming events scheduled')
+            d = dt.datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+            if is_today(d):
+                self.speak_dialog('NoAppointmentsToday')
+            elif is_tomorrow(d):
+                self.speak_dialog('NoAppointmentsTomorrow')
+            else:
+                self.speak_dialog('NoAppointments')
         else:
             for e in events:
                 start = e['start'].get('dateTime', e['start'].get('date'))
                 d = dt.datetime.strptime(start[:-6], '%Y-%m-%dT%H:%M:%S')
-                starttime = d.strftime('%H %M')
-                if is_today(d):
-                    self.speak(e['summary'] + ' at ' + starttime)
-                elif is_tomorrow(d):
-                    self.speak(e['summary'] + ' at ' + starttime)
+                starttime = d.strftime('%H . %M')
+                if is_today(d) or is_tomorrow(d):
+                    data = {'appointment': e['summary'],
+                            'time': starttime}
+                    self.speak_dialog('NextAppointment', data)
 
     def get_day(self, msg=None):
         return
