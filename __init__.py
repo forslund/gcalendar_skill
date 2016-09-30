@@ -17,8 +17,9 @@ import sys
 from mycroft.util.log import getLogger
 
 
-logger = getLogger(dirname(__name__))
+logger = getLogger('gcalendar_skill')
 sys.path.append(abspath(dirname(__file__)))
+
 
 __author__ = 'forslund'
 
@@ -48,10 +49,9 @@ def get_credentials():
     Returns:
         Credentials, the obtained credential.
     """
-    print "getting home"
     home_dir = os.path.expanduser('~')
     credential_dir = os.path.join(home_dir, '.credentials')
-    print "checking for cached credentials"
+    logger.info('checking for cached credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
     credential_path = os.path.join(credential_dir,
@@ -66,9 +66,9 @@ def get_credentials():
                                 scope=SCOPES,
                                 user_agent=APP_NAME + '/' + VERSION),
             store)
-        print 'Storing credentials to ' + credential_path
+        logger.info('Storing credentials to ' + credential_path)
     else:
-        print 'Loaded credentials from store'
+        logger.info('Loaded credentials from store')
     return credentials
 
 
