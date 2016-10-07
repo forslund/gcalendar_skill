@@ -16,6 +16,9 @@ from os.path import dirname, abspath
 import sys
 from mycroft.util.log import getLogger
 
+from parsedatetime import Calendar
+
+cal = Calendar()
 
 logger = getLogger('gcalendar_skill')
 sys.path.append(abspath(dirname(__file__)))
@@ -91,21 +94,8 @@ class GoogleCalendarSkill(MycroftSkill):
             .build()
         self.register_intent(intent, self.get_next)
 
-        intent = IntentBuilder('GetTodaysAppointmentsIntent')\
-            .require('TodayKeyword')\
+        intent = IntentBuilder('GetDaysAppointmentsIntent')\
             .require('AppointmentKeyword')\
-            .build()
-        self.register_intent(intent, self.get_today)
-
-        intent = IntentBuilder('GetTomorrowsAppointmentsIntent')\
-            .require('TomorrowKeyword')\
-            .require('AppointmentKeyword')\
-            .build()
-        self.register_intent(intent, self.get_tomorrow)
-
-        intent = IntentBuilder('GetAppointmentsForDayIntent')\
-            .require('WeekdayKeyword') \
-            .require('AppointmentKeyword') \
             .build()
         self.register_intent(intent, self.get_day)
 
@@ -144,30 +134,14 @@ class GoogleCalendarSkill(MycroftSkill):
                         'date': startdate}
                 self.speak_dialog('NextAppointmentDate', data)
 
-    def get_today(self, msg=None):
-        now = dt.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        day_end = dt.datetime.utcnow().replace(hour=23, minute=59, second=59)
-        day_end = day_end.isoformat() + 'Z'
-        self.speak_interval(now, day_end)
-
-    def get_tomorrow(self, msg=None):
-        now = dt.datetime.utcnow()
-        tomorrow = (now + dt.timedelta(days=1)) \
-            .replace(hour=0, minute=0, second=1)
-        tomorrow = tomorrow.isoformat() + 'Z'
-        tomorrow_end = dt.datetime.utcnow() \
-            .replace(hour=23, minute=59, second=59)
-        tomorrow_end += dt.timedelta(days=1)
-        tomorrow_end = tomorrow_end.isoformat() + 'Z'
-        self.speak_interval(tomorrow, tomorrow_end)
-
     def speak_interval(self, start, stop):
         eventsResult = self.service.events().list(
             calendarId='primary', timeMin=start, timeMax=stop,
             singleEvents=True, orderBy='startTime').execute()
         events = eventsResult.get('items', [])
         if not events:
-            d = dt.datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+            print start
+            d = dt.datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
             if is_today(d):
                 self.speak_dialog('NoAppointmentsToday')
             elif is_tomorrow(d):
@@ -179,12 +153,18 @@ class GoogleCalendarSkill(MycroftSkill):
                 start = e['start'].get('dateTime', e['start'].get('date'))
                 d = dt.datetime.strptime(start[:-6], '%Y-%m-%dT%H:%M:%S')
                 starttime = d.strftime('%H . %M')
-                if is_today(d) or is_tomorrow(d):
+                if is_today(d) or is_tomorrow(d) or True:
                     data = {'appointment': e['summary'],
                             'time': starttime}
                     self.speak_dialog('NextAppointment', data)
 
     def get_day(self, msg=None):
+        d = cal.parseDT(msg.metadata['utterance'])[0]
+        d = d.replace(hour=0, minute=0, second=1)
+        d_end = d.replace(hour=23, minute=59, second=59)
+        d = d.isoformat() + 'Z'
+        d_end = d_end.isoformat() + 'Z'
+        self.speak_interval(d, d_end)
         return
 
 
