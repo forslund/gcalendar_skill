@@ -129,6 +129,7 @@ class GoogleCalendarSkill(MycroftSkill):
             start = event['start'].get('dateTime', event['start'].get('date'))
             d = dt.datetime.strptime(start.split('+')[0], '%Y-%m-%dT%H:%M:%S')
             starttime = d.strftime('%H . %M')
+            startdate = d.strftime('%-m %B')
             if d.date() == dt.datetime.today().date():
                 data = {'appointment': event['summary'],
                         'time': starttime}
