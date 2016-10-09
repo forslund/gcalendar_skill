@@ -16,9 +16,11 @@ from os.path import dirname, abspath
 import sys
 from mycroft.util.log import getLogger
 
-from parsedatetime import Calendar
+path = os.path.dirname(sys.modules[__name__].__file__)
+path = os.path.join(path, '..')
+sys.path.insert(0, path)
 
-cal = Calendar()
+extractdate = __import__('extractdate').extractdate
 
 logger = getLogger('gcalendar_skill')
 sys.path.append(abspath(dirname(__file__)))
@@ -159,7 +161,7 @@ class GoogleCalendarSkill(MycroftSkill):
                     self.speak_dialog('NextAppointment', data)
 
     def get_day(self, msg=None):
-        d = cal.parseDT(msg.metadata['utterance'])[0]
+        d = extractdate(msg.metadata['utterance'])
         d = d.replace(hour=0, minute=0, second=1)
         d_end = d.replace(hour=23, minute=59, second=59)
         d = d.isoformat() + 'Z'
