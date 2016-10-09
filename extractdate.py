@@ -74,12 +74,14 @@ def _num_replace(string):
 
 minor_list = [' of ', ' the ']
 
+
 def _remove_minors(string):
     for w in minor_list:
         string = string.replace(w, ' ')
     return string
 
+
 def extractdate(string):
     string = _num_replace(string)
     string = _remove_minors(string)
-    return  cal.parseDT(string)[0]
+    return cal.parseDT(string)[0]
