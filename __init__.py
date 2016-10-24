@@ -4,11 +4,6 @@ from mycroft.messagebus.message import Message
 
 import httplib2
 from googleapiclient import discovery
-import oauth2client
-from oauth2client import file
-from oauth2client import client
-from oauth2client import tools
-from oauth2client.client import OAuth2WebServerFlow
 
 import datetime as dt
 import os
@@ -21,7 +16,7 @@ path = os.path.join(path, '..')
 sys.path.insert(0, path)
 
 extractdate = __import__('extractdate').extractdate
-
+get_credentials = __import__('google_cred').get_credentials
 logger = getLogger('gcalendar_skill')
 sys.path.append(abspath(dirname(__file__)))
 
@@ -35,47 +30,6 @@ def is_today(d):
 
 def is_tomorrow(d):
     return d.date() == dt.datetime.today().date() + dt.timedelta(days=1)
-
-CID = \
-    "1090750226387-sh7u7flhs8kja784eetfl779ukuu52m6.apps.googleusercontent.com"
-SSTRING = "gxJdIGxWtOc8Fk4I0CHmC8XY"
-SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
-
-APP_NAME = 'Google Calendar Mycroft Skill'
-VERSION = '0.1dev'
-
-
-def get_credentials():
-    """Gets valid user credentials from storage.
-
-    If nothing has been stored, or if the stored credentials are invalid,
-    the OAuth2 flow is completed to obtain the new credentials.
-
-    Returns:
-        Credentials, the obtained credential.
-    """
-    home_dir = os.path.expanduser('~')
-    credential_dir = os.path.join(home_dir, '.credentials')
-    logger.info('checking for cached credentials')
-    if not os.path.exists(credential_dir):
-        os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,
-                                   'calendar-skill.json')
-
-    store = oauth2client.file.Storage(credential_path)
-    credentials = store.get()
-    if not credentials or credentials.invalid:
-        credentials = tools.run_flow(
-            OAuth2WebServerFlow(client_id=CID,
-                                client_secret=SSTRING,
-                                scope=SCOPES,
-                                user_agent=APP_NAME + '/' + VERSION),
-            store)
-        logger.info('Storing credentials to ' + credential_path)
-    else:
-        logger.info('Loaded credentials from store')
-    return credentials
-
 
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
