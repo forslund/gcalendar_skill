@@ -55,6 +55,12 @@ class GoogleCalendarSkill(MycroftSkill):
             .build()
         self.register_intent(intent, self.get_day)
 
+        intent = IntentBuilder('GetFirstAppointmentIntent')\
+            .require('AppointmentKeyword')\
+            .require('FirstKeyword')\
+            .build()
+        self.register_intent(intent, self.get_first)
+
     def initialize(self):
         self.load_data_files(dirname(__file__))
         self.emitter.on(self.name + '.calendar_connect',
@@ -90,10 +96,11 @@ class GoogleCalendarSkill(MycroftSkill):
                         'date': startdate}
                 self.speak_dialog('NextAppointmentDate', data)
 
-    def speak_interval(self, start, stop):
+    def speak_interval(self, start, stop, max_results=None):
         eventsResult = self.service.events().list(
             calendarId='primary', timeMin=start, timeMax=stop,
-            singleEvents=True, orderBy='startTime').execute()
+            singleEvents=True, orderBy='startTime',
+            maxResults = max_results).execute()
         events = eventsResult.get('items', [])
         if not events:
             print start
@@ -122,6 +129,14 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end)
         return
+
+    def get_first(self, msg=None):
+        d = extractdate(msg.metadata['utterance'])
+        d = d.replace(hour=0, minute=0, second=1)
+        d_end = d.replace(hour=23, minute=59, second=59)
+        d = d.isoformat() + 'Z'
+        d_end = d_end.isoformat() + 'Z'
+        self.speak_interval(d, d_end, max_results=1)
 
 
 def create_skill():
