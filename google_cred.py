@@ -12,7 +12,7 @@ from oauth2client.client import OAuth2WebServerFlow
 CID = \
     "1090750226387-sh7u7flhs8kja784eetfl779ukuu52m6.apps.googleusercontent.com"
 SSTRING = "gxJdIGxWtOc8Fk4I0CHmC8XY"
-SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
+SCOPES = 'https://www.googleapis.com/auth/calendar'
 
 APP_NAME = 'Google Calendar Mycroft Skill'
 VERSION = '0.1dev'
