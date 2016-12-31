@@ -122,7 +122,7 @@ class GoogleCalendarSkill(MycroftSkill):
                     self.speak_dialog('NextAppointment', data)
 
     def get_day(self, msg=None):
-        d = extractdate(msg.metadata['utterance'])
+        d = extractdate(msg.data['utterance'])
         d = d.replace(hour=0, minute=0, second=1)
         d_end = d.replace(hour=23, minute=59, second=59)
         d = d.isoformat() + 'Z'
@@ -131,7 +131,7 @@ class GoogleCalendarSkill(MycroftSkill):
         return
 
     def get_first(self, msg=None):
-        d = extractdate(msg.metadata['utterance'])
+        d = extractdate(msg.data['utterance'])
         d = d.replace(hour=0, minute=0, second=1)
         d_end = d.replace(hour=23, minute=59, second=59)
         d = d.isoformat() + 'Z'
