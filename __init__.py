@@ -30,6 +30,10 @@ def is_today(d):
 def is_tomorrow(d):
     return d.date() == dt.datetime.today().date() + dt.timedelta(days=1)
 
+def is_wholeday_event(e):
+    return 'dateTime' not in e['start']
+
+
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
@@ -78,7 +82,7 @@ class GoogleCalendarSkill(MycroftSkill):
         else:
             event = events[0]
             print event
-            if 'dateTime' in event['start']:
+            if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
                 d = dt.datetime.strptime(start.split('+')[0], '%Y-%m-%dT%H:%M:%S')
                 starttime = d.strftime('%H . %M')
@@ -131,13 +135,17 @@ class GoogleCalendarSkill(MycroftSkill):
                 self.speak_dialog('NoAppointments')
         else:
             for e in events:
-                start = e['start'].get('dateTime', e['start'].get('date'))
-                d = dt.datetime.strptime(start[:-6], '%Y-%m-%dT%H:%M:%S')
-                starttime = d.strftime('%H . %M')
-                if is_today(d) or is_tomorrow(d) or True:
-                    data = {'appointment': e['summary'],
-                            'time': starttime}
-                    self.speak_dialog('NextAppointment', data)
+                if is_wholeday_event(e):
+                    data = {'appointment': e['summary']}
+                    self.speak_dialog('WholedayAppointment', data)
+                else:
+                    start = e['start'].get('dateTime', e['start'].get('date'))
+                    d = dt.datetime.strptime(start[:-6], '%Y-%m-%dT%H:%M:%S')
+                    starttime = d.strftime('%H . %M')
+                    if is_today(d) or is_tomorrow(d) or True:
+                        data = {'appointment': e['summary'],
+                                'time': starttime}
+                        self.speak_dialog('NextAppointment', data)
 
     def get_day(self, msg=None):
         d = extractdate(msg.data['utterance'])
