@@ -77,12 +77,30 @@ class GoogleCalendarSkill(MycroftSkill):
             self.speak_dialog('NoNextAppointments')
         else:
             event = events[0]
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            d = dt.datetime.strptime(start.split('+')[0], '%Y-%m-%dT%H:%M:%S')
-            starttime = d.strftime('%H . %M')
-            startdate = d.strftime('%-d %B')
-            print startdate
-            if d.date() == dt.datetime.today().date():
+            print event
+            if 'dateTime' in event['start']:
+                start = event['start'].get('dateTime')
+                d = dt.datetime.strptime(start.split('+')[0], '%Y-%m-%dT%H:%M:%S')
+                starttime = d.strftime('%H . %M')
+                startdate = d.strftime('%-d %B')
+            else:
+                start = event['start']['date']
+                d = dt.datetime.strptime(start, '%Y-%m-%d')
+                startdate = d.strftime('%-d %B')
+                starttime = None
+            # Speak result
+            if starttime is None:
+                if d.date() == dt.datetime.today().date():
+                    data = {'appointment': event['summary']}
+                    self.speak_dialog('NextAppointmentWholeToday', data)
+                elif is_tomorrow(d):
+                    data = {'appointment': event['summary']}
+                    self.speak_dialog('NextAppointmentWholeTomorrow', data)
+                else:
+                    data = {'appointment': event['summary'],
+                            'date': startdate}
+                    self.speak_dialog('NextAppointmentWholeDay', data)
+            elif d.date() == dt.datetime.today().date():
                 data = {'appointment': event['summary'],
                         'time': starttime}
                 self.speak_dialog('NextAppointment', data)
