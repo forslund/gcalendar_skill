@@ -10,6 +10,8 @@ import os
 from os.path import dirname, abspath
 import sys
 from mycroft.util.log import getLogger
+from tzlocal import get_localzone
+from datetime import datetime, timedelta
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 sys.path.insert(0, path)
@@ -39,6 +41,8 @@ def remove_tz(string):
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
+        tz_string = datetime.now(get_localzone()).strftime('%z')
+        self.tz_string = tz_string[:-2] + ':' + tz_string[-2:]
 
     def _calendar_connect(self, msg=None):
         argv = sys.argv
@@ -65,6 +69,12 @@ class GoogleCalendarSkill(MycroftSkill):
             .require('FirstKeyword')\
             .build()
         self.register_intent(intent, self.get_first)
+
+        intent = IntentBuilder('AddNewAppointment')\
+            .require('AddKeyword')\
+            .require('AppointmentTitle')\
+            .build()
+        self.register_intent(intent, self.add_new)
 
     def initialize(self):
         self.load_data_files(dirname(__file__))
@@ -167,6 +177,28 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
+    def add_new(self, msg=None):
+        print msg.data['AppointmentTitle']
+        print extractdate(msg.data['utterance'])
+        st = extractdate(msg.data['utterance'])
+        start_time = st.strftime('%Y-%m-%dT%H:%M:00')
+        start_time += self.tz_string
+
+        et = st + timedelta(hours=1)
+        stop_time = et.strftime('%Y-%m-%dT%H:%M:00')
+        stop_time += self.tz_string
+        event = {}
+        event['summary'] = msg.data['AppointmentTitle']
+        event['start'] = {
+            'dateTime': start_time,
+            'timeZone': str(get_localzone())
+        }
+        event['end'] = {
+            'dateTime': stop_time,
+            'timeZone': str(get_localzone())
+        }
+        print event
+        self.service.events().insert(calendarId='primary', body=event).execute()
 
 def create_skill():
     return GoogleCalendarSkill()
