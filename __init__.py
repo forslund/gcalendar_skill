@@ -198,7 +198,13 @@ class GoogleCalendarSkill(MycroftSkill):
             'timeZone': str(get_localzone())
         }
         print event
-        self.service.events().insert(calendarId='primary', body=event).execute()
+        data = {'appointment': msg.data['AppointmentTitle']}
+        try:
+            self.service.events()\
+                .insert(calendarId='primary', body=event).execute()
+            self.speak_dialog('AddSucceeded', data)
+        except:
+            self.speak_dialog('AddFailed', data)
 
 def create_skill():
     return GoogleCalendarSkill()
