@@ -55,17 +55,18 @@ class GoogleCalendarSkill(MycroftSkill):
         self.load_data_files(dirname(__file__))
         intent = IntentBuilder('GetNextAppointment')\
             .require('NextKeyword')\
-            .require('AppointmentKeyword')\
+            .one_of('AppointmentKeyword', 'ScheduleKeyword')\
             .build()
         self.register_intent(intent, self.get_next)
 
         intent = IntentBuilder('GetDaysAppointmentsIntent')\
-            .require('AppointmentKeyword')\
+            .require('QueryKeyword')\
+            .one_of('AppointmentKeyword', 'ScheduleKeyword')\
             .build()
         self.register_intent(intent, self.get_day)
 
         intent = IntentBuilder('GetFirstAppointmentIntent')\
-            .require('AppointmentKeyword')\
+            .one_of('AppointmentKeyword', 'ScheduleKeyword')\
             .require('FirstKeyword')\
             .build()
         self.register_intent(intent, self.get_first)
@@ -73,6 +74,14 @@ class GoogleCalendarSkill(MycroftSkill):
         intent = IntentBuilder('AddNewAppointment')\
             .require('AddKeyword')\
             .require('AppointmentTitle')\
+            .build()
+        self.register_intent(intent, self.add_new)
+
+        intent = IntentBuilder('AddNewAppointmentToSchedule')\
+            .require('AddKeyword')\
+            .require('ScheduleKeyword')\
+            .require('ToKeyword')\
+            .require('AppointmentTitleAlt2')\
             .build()
         self.register_intent(intent, self.add_new)
 
@@ -178,8 +187,12 @@ class GoogleCalendarSkill(MycroftSkill):
         self.speak_interval(d, d_end, max_results=1)
 
     def add_new(self, msg=None):
-        print msg.data['AppointmentTitle']
-        print extractdate(msg.data['utterance'])
+        logger.debug('Adding new event...')
+        title = msg.data.get('AppointmentTitle',
+                             msg.data.get('AppointmentTitleAlt2', None))
+        if title is None:
+            return
+
         st = extractdate(msg.data['utterance'])
         start_time = st.strftime('%Y-%m-%dT%H:%M:00')
         start_time += self.tz_string
@@ -188,7 +201,7 @@ class GoogleCalendarSkill(MycroftSkill):
         stop_time = et.strftime('%Y-%m-%dT%H:%M:00')
         stop_time += self.tz_string
         event = {}
-        event['summary'] = msg.data['AppointmentTitle']
+        event['summary'] = title
         event['start'] = {
             'dateTime': start_time,
             'timeZone': str(get_localzone())
@@ -197,14 +210,14 @@ class GoogleCalendarSkill(MycroftSkill):
             'dateTime': stop_time,
             'timeZone': str(get_localzone())
         }
-        print event
-        data = {'appointment': msg.data['AppointmentTitle']}
+        data = {'appointment': title}
         try:
             self.service.events()\
                 .insert(calendarId='primary', body=event).execute()
             self.speak_dialog('AddSucceeded', data)
         except:
             self.speak_dialog('AddFailed', data)
+
 
 def create_skill():
     return GoogleCalendarSkill()

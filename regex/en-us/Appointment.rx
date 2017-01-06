@@ -1,1 +1,1 @@
-(appointment) (?P<AppointmentTitle>.*) (at|on)
+(appointment|event) (?P<AppointmentTitle>.*) (at|on)
