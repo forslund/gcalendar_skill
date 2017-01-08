@@ -32,6 +32,7 @@ def is_today(d):
 def is_tomorrow(d):
     return d.date() == dt.datetime.today().date() + dt.timedelta(days=1)
 
+
 def is_wholeday_event(e):
     return 'dateTime' not in e['start']
 
@@ -143,7 +144,7 @@ class GoogleCalendarSkill(MycroftSkill):
         eventsResult = self.service.events().list(
             calendarId='primary', timeMin=start, timeMax=stop,
             singleEvents=True, orderBy='startTime',
-            maxResults = max_results).execute()
+            maxResults=max_results).execute()
         events = eventsResult.get('items', [])
         if not events:
             print start
