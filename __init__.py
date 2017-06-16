@@ -33,6 +33,8 @@ def is_tomorrow(d):
 def is_wholeday_event(e):
     return 'dateTime' not in e['start']
 
+def remove_tz(string):
+    return string[:-6]
 
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
@@ -84,7 +86,7 @@ class GoogleCalendarSkill(MycroftSkill):
             print event
             if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
-                d = dt.datetime.strptime(start.split('+')[0], '%Y-%m-%dT%H:%M:%S')
+                d = dt.datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
                 starttime = d.strftime('%H . %M')
                 startdate = d.strftime('%-d %B')
             else:
@@ -140,7 +142,8 @@ class GoogleCalendarSkill(MycroftSkill):
                     self.speak_dialog('WholedayAppointment', data)
                 else:
                     start = e['start'].get('dateTime', e['start'].get('date'))
-                    d = dt.datetime.strptime(start[:-6], '%Y-%m-%dT%H:%M:%S')
+                    d = dt.datetime.strptime(remove_tz(start),
+                                             '%Y-%m-%dT%H:%M:%S')
                     starttime = d.strftime('%H . %M')
                     if is_today(d) or is_tomorrow(d) or True:
                         data = {'appointment': e['summary'],
