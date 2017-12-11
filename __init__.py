@@ -1,6 +1,7 @@
 from adapt.intent import IntentBuilder
-from mycroft.skills.core import MycroftSkill
+from mycroft import MycroftSkill, intent_file_handler
 from mycroft.messagebus.message import Message
+from mycroft.util.log import LOG
 
 import httplib2
 from googleapiclient import discovery
@@ -9,7 +10,6 @@ import datetime as dt
 import os
 from os.path import dirname, abspath
 import sys
-from mycroft.util.log import getLogger
 from tzlocal import get_localzone
 from datetime import datetime, timedelta
 
@@ -18,11 +18,7 @@ sys.path.insert(0, path)
 
 extractdate = __import__('extractdate').extractdate
 get_credentials = __import__('google_cred').get_credentials
-logger = getLogger('gcalendar_skill')
 sys.path.append(abspath(dirname(__file__)))
-
-
-__author__ = 'forslund'
 
 
 def is_today(d):
@@ -45,7 +41,7 @@ class GoogleCalendarSkill(MycroftSkill):
         tz_string = datetime.now(get_localzone()).strftime('%z')
         self.tz_string = tz_string[:-2] + ':' + tz_string[-2:]
 
-    def _calendar_connect(self, msg=None):
+    def __calendar_connect(self, msg=None):
         argv = sys.argv
         sys.argv = []
         self.credentials = get_credentials()
@@ -72,25 +68,10 @@ class GoogleCalendarSkill(MycroftSkill):
             .build()
         self.register_intent(intent, self.get_first)
 
-        intent = IntentBuilder('AddNewAppointment')\
-            .require('AddKeyword')\
-            .require('AppointmentTitle')\
-            .build()
-        self.register_intent(intent, self.add_new)
-
-        intent = IntentBuilder('AddNewAppointmentToSchedule')\
-            .require('AddKeyword')\
-            .require('ScheduleKeyword')\
-            .require('ToKeyword')\
-            .require('AppointmentTitleAlt2')\
-            .build()
-        self.register_intent(intent, self.add_new)
-
     def initialize(self):
         self.load_data_files(dirname(__file__))
-        self.emitter.on(self.name + '.calendar_connect',
-                        self._calendar_connect)
-        self.emitter.emit(Message(self.name + '.calendar_connect'))
+        self.schedule_event(self.__calendar_connect, datetime.now(),
+                                      name='calendar_connect')
 
     def get_next(self, msg=None):
         now = dt.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
@@ -103,7 +84,7 @@ class GoogleCalendarSkill(MycroftSkill):
             self.speak_dialog('NoNextAppointments')
         else:
             event = events[0]
-            print event
+            LOG.debug(event)
             if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
                 d = dt.datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
@@ -147,7 +128,7 @@ class GoogleCalendarSkill(MycroftSkill):
             maxResults=max_results).execute()
         events = eventsResult.get('items', [])
         if not events:
-            print start
+            LOG.debug(start)
             d = dt.datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
             if is_today(d):
                 self.speak_dialog('NoAppointmentsToday')
@@ -187,10 +168,9 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
+    @intent_file_handler('ScheduleAt.intent')
     def add_new(self, msg=None):
-        logger.debug('Adding new event...')
-        title = msg.data.get('AppointmentTitle',
-                             msg.data.get('AppointmentTitleAlt2', None))
+        title = msg.data.get('appointmenttitle', None)
         if title is None:
             return
 
