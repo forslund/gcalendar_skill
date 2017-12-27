@@ -1,0 +1,17 @@
+{
+    "name": "Mycroft Google Calendar",
+    "skillMetadata": {
+        "sections": [
+            {
+                "name": "Options",
+                "fields": [
+                    {
+                        "name": "Google Calendar",
+                        "type": "oauth",
+                        "value": 2
+                    }
+                ]
+            }
+        ]
+    }
+}
