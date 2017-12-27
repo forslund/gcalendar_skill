@@ -1,0 +1,14 @@
+add {appointmenttitle} to my calendar at {timedate}
+add {appointmenttitle} to the calendar at {timedate}
+add {appointmenttitle} to calendar at {timedate}
+add new {appointmenttitle} to my calendar at {timedate}
+add new {appointmenttitle} to the calendar at {timedate}
+add new {appointmenttitle} to calendar at {timedate}
+put {appointmenttitle} on my calendar at {timedate}
+put {appointmenttitle} on the calendar at {timedate}
+put {appointmenttitle} on calendar at {timedate}
+put new {appointmenttitle} on my calendar at {timedate}
+put new {appointmenttitle} on the calendar at {timedate}
+put new {appointmenttitle} on calendar at {timedate}
+schedule {appointmenttitle} at {timedate}
+schedule new {appointmenttitle} at {timedate}

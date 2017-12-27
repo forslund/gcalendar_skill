@@ -12,6 +12,7 @@ from os.path import dirname, abspath
 import sys
 from tzlocal import get_localzone
 from datetime import datetime, timedelta
+from mycroft.util.parse import extract_datetime
 
 path = os.path.dirname(sys.modules[__name__].__file__)
 sys.path.insert(0, path)
@@ -20,7 +21,7 @@ extractdate = __import__('extractdate').extractdate
 get_credentials = __import__('google_cred').get_credentials
 sys.path.append(abspath(dirname(__file__)))
 
-
+UTC_TZ = u'+00:00'
 def is_today(d):
     return d.date() == dt.datetime.today().date()
 
@@ -38,8 +39,6 @@ def remove_tz(string):
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
-        tz_string = datetime.now(get_localzone()).strftime('%z')
-        self.tz_string = tz_string[:-2] + ':' + tz_string[-2:]
 
     def __calendar_connect(self, msg=None):
         argv = sys.argv
@@ -168,28 +167,42 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
+    @intent_file_handler('Schedule')
+    def add_new(self, message=None):
+        title = self.get_response('what\'s the new event')
+        start = self.get_response('when does it start')
+        end = self.get_response('when does it end')
+        st = extract_datetime(start)
+        et = extract_datetime(end)
+        self.add_calendar_event(title, start_time=st, end_time=et)
+
     @intent_file_handler('ScheduleAt.intent')
-    def add_new(self, msg=None):
+    def add_new_quick(self, msg=None):
         title = msg.data.get('appointmenttitle', None)
         if title is None:
+            print "NO TITLE"
             return
 
-        st = extractdate(msg.data['utterance'])
-        start_time = st.strftime('%Y-%m-%dT%H:%M:00')
-        start_time += self.tz_string
-
+        st = extract_datetime(msg.data['utterance'])[0] # start time
+        # convert to UTC
+        st -= timedelta(seconds=self.location['timezone']['offset'] / 1000)
         et = st + timedelta(hours=1)
-        stop_time = et.strftime('%Y-%m-%dT%H:%M:00')
-        stop_time += self.tz_string
+        self.add_calendar_event(title, st, et)
+
+    def add_calendar_event(self, title, start_time, end_time, summary=None):
+        print type(start_time)
+        start_time = start_time.strftime('%Y-%m-%dT%H:%M:00')
+        stop_time = end_time.strftime('%Y-%m-%dT%H:%M:00')
+        stop_time += UTC_TZ
         event = {}
         event['summary'] = title
         event['start'] = {
             'dateTime': start_time,
-            'timeZone': str(get_localzone())
+            'timeZone': 'UTC'
         }
         event['end'] = {
             'dateTime': stop_time,
-            'timeZone': str(get_localzone())
+            'timeZone': 'UTC'
         }
         data = {'appointment': title}
         try:
