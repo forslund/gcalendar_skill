@@ -1,12 +1,11 @@
 import os
+from mycroft.api import DeviceApi
 
 import httplib2
-from googleapiclient import discovery
 import oauth2client
 from oauth2client import file
 from oauth2client import client
 from oauth2client import tools
-from oauth2client.client import OAuth2WebServerFlow
 
 
 CID = \
@@ -38,13 +37,8 @@ def get_credentials():
     store = oauth2client.file.Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
-        credentials = tools.run_flow(
-            OAuth2WebServerFlow(client_id=CID,
-                                client_secret=SSTRING,
-                                scope=SCOPES,
-                                user_agent=APP_NAME + '/' + VERSION),
-            store)
-        print('Storing credentials to ' + credential_path)
+        cred_json = DeviceApi().get_oauth_token()
+        credentials = OAuth2Credentials.from_json(cred_json)
     else:
         print('Loaded credentials from store')
     return credentials
