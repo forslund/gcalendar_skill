@@ -6,7 +6,7 @@
                 "name": "Options",
                 "fields": [
                     {
-                        "name": "Google Calendar",
+                        "name": "Google Calendar",
                         "type": "oauth",
                         "value": 2
                     }
