@@ -5,23 +5,18 @@ from mycroft.util.log import LOG
 
 import httplib2
 from googleapiclient import discovery
+from oauth2client import client
 
 import datetime as dt
-import os
-from os.path import dirname, abspath
 import sys
 from tzlocal import get_localzone
 from datetime import datetime, timedelta
 from mycroft.util.parse import extract_datetime
-
-path = os.path.dirname(sys.modules[__name__].__file__)
-sys.path.insert(0, path)
-
-extractdate = __import__('extractdate').extractdate
-get_credentials = __import__('google_cred').get_credentials
-sys.path.append(abspath(dirname(__file__)))
+from mycroft.api import DeviceApi
 
 UTC_TZ = u'+00:00'
+
+
 def is_today(d):
     return d.date() == dt.datetime.today().date()
 
@@ -36,6 +31,16 @@ def is_wholeday_event(e):
 def remove_tz(string):
     return string[:-6]
 
+class MycroftTokenCredentials(client.AccessTokenCredentials):
+    def __init__(self, cred_id):
+        d = DeviceApi().get_oauth_token(3)
+        super(MycroftTokenCredentials, self).__init__(d['access_token'],
+                                                      d['user_agent'])
+    def _refresh(self, http):
+        d = DeviceApi().get_oauth_token(3)
+        self.access_token = d['access_token']
+
+
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
@@ -43,12 +48,12 @@ class GoogleCalendarSkill(MycroftSkill):
     def __calendar_connect(self, msg=None):
         argv = sys.argv
         sys.argv = []
-        self.credentials = get_credentials()
+        self.credentials = MycroftTokenCredentials(3) # 3 is the credentials id
+        LOG.info('Credentials: {}'.format(self.credentials))
         http = self.credentials.authorize(httplib2.Http())
         self.service = discovery.build('calendar', 'v3', http=http)
         sys.argv = argv
 
-        self.load_data_files(dirname(__file__))
         intent = IntentBuilder('GetNextAppointment')\
             .require('NextKeyword')\
             .one_of('AppointmentKeyword', 'ScheduleKeyword')\
@@ -66,9 +71,9 @@ class GoogleCalendarSkill(MycroftSkill):
             .require('FirstKeyword')\
             .build()
         self.register_intent(intent, self.get_first)
+        self.cancel_scheduled_event('calendar_connect')
 
     def initialize(self):
-        self.load_data_files(dirname(__file__))
         self.schedule_event(self.__calendar_connect, datetime.now(),
                                       name='calendar_connect')
 

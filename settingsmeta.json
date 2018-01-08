@@ -3,12 +3,12 @@
     "skillMetadata": {
         "sections": [
             {
-                "name": "Options",
+                "name": "Settings",
                 "fields": [
                     {
                         "name": "Google Calendar",
                         "type": "oauth",
-                        "value": 2
+                        "value": 3
                     }
                 ]
             }
