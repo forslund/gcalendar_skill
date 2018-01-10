@@ -102,7 +102,7 @@ class GoogleCalendarSkill(MycroftSkill):
             if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
                 d = dt.datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
-                starttime = d.strftime('%H . %M')
+                starttime = d.strftime('%H:%M')
                 startdate = d.strftime('%-d %B')
             else:
                 start = event['start']['date']
@@ -159,7 +159,7 @@ class GoogleCalendarSkill(MycroftSkill):
                     start = e['start'].get('dateTime', e['start'].get('date'))
                     d = dt.datetime.strptime(remove_tz(start),
                                              '%Y-%m-%dT%H:%M:%S')
-                    starttime = d.strftime('%H . %M')
+                    starttime = d.strftime('%H:%M')
                     if is_today(d) or is_tomorrow(d) or True:
                         data = {'appointment': e['summary'],
                                 'time': starttime}
