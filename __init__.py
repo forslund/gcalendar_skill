@@ -39,7 +39,13 @@ class MycroftTokenCredentials(client.AccessTokenCredentials):
         super(MycroftTokenCredentials, self).__init__(d['access_token'],
                                                       d['user_agent'])
     def _refresh(self, http):
-        d = DeviceApi().get_oauth_token(self.cred_id)
+        retry = False
+        try:
+            d = DeviceApi().get_oauth_token(self.cred_id)
+        except HTTPError:
+            retry = True
+        if retry:
+            d = DeviceApi().get_oauth_token(self.cred_id)
         self.access_token = d['access_token']
 
 
