@@ -34,11 +34,12 @@ def remove_tz(string):
 
 class MycroftTokenCredentials(client.AccessTokenCredentials):
     def __init__(self, cred_id):
+        self.cred_id = cred_id
         d = DeviceApi().get_oauth_token(cred_id)
         super(MycroftTokenCredentials, self).__init__(d['access_token'],
                                                       d['user_agent'])
     def _refresh(self, http):
-        d = DeviceApi().get_oauth_token(3)
+        d = DeviceApi().get_oauth_token(self.cred_id)
         self.access_token = d['access_token']
 
 
