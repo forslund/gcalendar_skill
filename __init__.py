@@ -13,6 +13,7 @@ from tzlocal import get_localzone
 from datetime import datetime, timedelta
 from mycroft.util.parse import extract_datetime
 from mycroft.api import DeviceApi
+from requests import HTTPError
 
 UTC_TZ = u'+00:00'
 
@@ -33,7 +34,7 @@ def remove_tz(string):
 
 class MycroftTokenCredentials(client.AccessTokenCredentials):
     def __init__(self, cred_id):
-        d = DeviceApi().get_oauth_token(3)
+        d = DeviceApi().get_oauth_token(cred_id)
         super(MycroftTokenCredentials, self).__init__(d['access_token'],
                                                       d['user_agent'])
     def _refresh(self, http):
@@ -48,12 +49,21 @@ class GoogleCalendarSkill(MycroftSkill):
     def __calendar_connect(self, msg=None):
         argv = sys.argv
         sys.argv = []
-        self.credentials = MycroftTokenCredentials(3) # 3 is the credentials id
-        LOG.info('Credentials: {}'.format(self.credentials))
-        http = self.credentials.authorize(httplib2.Http())
-        self.service = discovery.build('calendar', 'v3', http=http)
-        sys.argv = argv
+        try:
+            # Get token for this skill (id 4)
+            self.credentials = MycroftTokenCredentials(4)
+            LOG.info('Credentials: {}'.format(self.credentials))
+            http = self.credentials.authorize(httplib2.Http())
+            self.service = discovery.build('calendar', 'v3', http=http)
+            sys.argv = argv
+            self.__register_intents()
+            self.cancel_scheduled_event('calendar_connect')
+        except HTTPError:
+            LOG.info('No Credentials available')
+            pass
 
+    def __register_intents(self):
+        LOG.info('Loading calendar intents')
         intent = IntentBuilder('GetNextAppointment')\
             .require('NextKeyword')\
             .one_of('AppointmentKeyword', 'ScheduleKeyword')\
@@ -71,7 +81,6 @@ class GoogleCalendarSkill(MycroftSkill):
             .require('FirstKeyword')\
             .build()
         self.register_intent(intent, self.get_first)
-        self.cancel_scheduled_event('calendar_connect')
 
     def initialize(self):
         self.schedule_event(self.__calendar_connect, datetime.now(),
