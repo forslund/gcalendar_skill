@@ -7,7 +7,6 @@ import httplib2
 from googleapiclient import discovery
 from oauth2client import client
 
-import datetime as dt
 import sys
 from tzlocal import get_localzone
 from datetime import datetime, timedelta
@@ -19,11 +18,11 @@ UTC_TZ = u'+00:00'
 
 
 def is_today(d):
-    return d.date() == dt.datetime.today().date()
+    return d.date() == datetime.today().date()
 
 
 def is_tomorrow(d):
-    return d.date() == dt.datetime.today().date() + dt.timedelta(days=1)
+    return d.date() == datetime.today().date() + timedelta(days=1)
 
 
 def is_wholeday_event(e):
@@ -94,7 +93,7 @@ class GoogleCalendarSkill(MycroftSkill):
                                       name='calendar_connect')
 
     def get_next(self, msg=None):
-        now = dt.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         eventsResult = self.service.events().list(
             calendarId='primary', timeMin=now, maxResults=10,
             singleEvents=True, orderBy='startTime').execute()
@@ -107,17 +106,17 @@ class GoogleCalendarSkill(MycroftSkill):
             LOG.debug(event)
             if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
-                d = dt.datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
+                d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
                 starttime = d.strftime('%H:%M')
                 startdate = d.strftime('%-d %B')
             else:
                 start = event['start']['date']
-                d = dt.datetime.strptime(start, '%Y-%m-%d')
+                d = datetime.strptime(start, '%Y-%m-%d')
                 startdate = d.strftime('%-d %B')
                 starttime = None
             # Speak result
             if starttime is None:
-                if d.date() == dt.datetime.today().date():
+                if d.date() == datetime.today().date():
                     data = {'appointment': event['summary']}
                     self.speak_dialog('NextAppointmentWholeToday', data)
                 elif is_tomorrow(d):
@@ -127,7 +126,7 @@ class GoogleCalendarSkill(MycroftSkill):
                     data = {'appointment': event['summary'],
                             'date': startdate}
                     self.speak_dialog('NextAppointmentWholeDay', data)
-            elif d.date() == dt.datetime.today().date():
+            elif d.date() == datetime.today().date():
                 data = {'appointment': event['summary'],
                         'time': starttime}
                 self.speak_dialog('NextAppointment', data)
@@ -149,7 +148,7 @@ class GoogleCalendarSkill(MycroftSkill):
         events = eventsResult.get('items', [])
         if not events:
             LOG.debug(start)
-            d = dt.datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
+            d = datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
             if is_today(d):
                 self.speak_dialog('NoAppointmentsToday')
             elif is_tomorrow(d):
@@ -163,7 +162,7 @@ class GoogleCalendarSkill(MycroftSkill):
                     self.speak_dialog('WholedayAppointment', data)
                 else:
                     start = e['start'].get('dateTime', e['start'].get('date'))
-                    d = dt.datetime.strptime(remove_tz(start),
+                    d = datetime.strptime(remove_tz(start),
                                              '%Y-%m-%dT%H:%M:%S')
                     starttime = d.strftime('%H:%M')
                     if is_today(d) or is_tomorrow(d) or True:
