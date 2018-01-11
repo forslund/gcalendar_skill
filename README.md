@@ -1,45 +1,19 @@
-# Google Calendar skill for Mycroft
+## Google Calendar skill
+A skill allowing Mycroft to access Google Calendar.
 
-This is a basic skill for interacting with google calendar that can either reside in `~/.mycroft/third_party_skills/` or `/opt/mycroft/third_party`.
+## Description 
+Fetches scheduled events from Google Calendar and allows adding events to your calendar.
 
-Currently this only supports a few intents and are read-only
+To authorize access to your calendar: 
+- Go to home.mycroft.ai and click on skills.
+- Scroll down to Google Calendar
+- Click "Connect"
+- Log into your Google account and authorize the skill 
 
-## Installation
+## Examples 
+* "what's next on my schedule"
+* "what's on my calendar on friday"
+* "add have fun to my calendar at 7 in the evening on saturday"
 
-Enter the mycroft virtualenv amd go to the third party skill directory
-```
-  workon mycroft
-  cd [THIRD PARTY SKILL DIRECTORY]
-```
-
-Clone the git repository
-```
-  git clone https://github.com/forslund/gcalendar_skill.git
-```
-
-Install prerequisites into the mycroft environment
-```
-  pip install -r gcalendar_skill/requirements.txt
-```
-
-Authorize access to google calendar.
-```
-  python gcalendar_skill
-```
-
-Above will open a web-browser where you will have to approve access.
-
-If the machine running the skill is headless instead run
-```
-  python gcalendar_skill --noauth_local_webserver
-```
-
-You will now be given a link. Paste this into a web browser to retreive an authoriation code to enter into the command line.
-
-Finally(!) restart mycroft to load the skill.
-
-## Stuff to try out:
-
-*What's my next appointment?*
-
-*What's scheduled for today?*
+## Credits 
+Mycroft AI
