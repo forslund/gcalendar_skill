@@ -1,2 +1,5 @@
 # python compiled files
 *.pyc
+
+# skill settings
+settings.json
