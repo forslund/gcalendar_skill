@@ -17,6 +17,84 @@ from requests import HTTPError
 UTC_TZ = u'+00:00'
 
 
+def nice_time(dt, lang="en-us", speech=True, use_24hour=False,
+              use_ampm=False):
+    """
+    Format a time to a comfortable human format
+
+    For example, generate 'five thirty' for speech or '5:30' for
+    text display.
+
+    Args:
+        dt (datetime): date to format (assumes already in local timezone)
+        lang (str): code for the language to use
+        speech (bool): format for speech (default/True) or display (False)=Fal
+        use_24hour (bool): output in 24-hour/military or 12-hour format
+        use_ampm (bool): include the am/pm for 12-hour format
+    Returns:
+        (str): The formatted time string
+    """
+
+    if use_24hour:
+        # e.g. "03:01" or "14:22"
+        string = dt.strftime("%H:%M")
+    else:
+        if use_ampm:
+            # e.g. "3:01 AM" or "2:22 PM"
+            string = dt.strftime("%I:%M %p")
+        else:
+            # e.g. "3:01" or "2:22"
+            string = dt.strftime("%I:%M")
+        if string[0] == '0':
+            string = string[1:]  # strip leading zeros
+        return string
+
+    if not speech:
+        return string
+
+    # Generate a speakable version of the time
+    if use_24hour:
+        speak = ""
+
+        # Either "0 8 hundred" or "13 hundred"
+        if string[0] == '0':
+            if string[1] == '0':
+                speak = "0 0"
+            else:
+                speak = "0 " + string[1]
+        else:
+            speak += string[0:2]
+
+        if string[3] == '0':
+            if string[4] == '0':
+                # Ignore the 00 in, for example, 13:00
+                speak += " oclock"  # TODO: Localize
+            else:
+                speak += " o " + string[4]  # TODO: Localize
+        else:
+            if string[0] == '0':
+                speak += " " + string[3:5]
+            else:
+                # TODO: convert "23" to "twenty three" in helper method
+
+                # Mimic is speaking "23 34" as "two three 43" :(
+                # but it does say "2343" correctly.  Not ideal for general
+                # TTS but works for the moment.
+                speak += ":" + string[3:5]
+
+        return speak
+    else:
+        if lang.startswith("en"):
+            if dt.hour == 0 and dt.minute == 0:
+                return "midnight"  # TODO: localize
+            if dt.hour == 12 and dt.minute == 0:
+                return "noon"  # TODO: localize
+            # TODO: "half past 3", "a quarter of 4" and other idiomatic times
+
+            # lazy for now, let TTS handle speaking "03:22 PM" and such
+        return string
+
+
 def is_today(d):
     return d.date() == datetime.today().date()
 
@@ -51,6 +129,10 @@ class MycroftTokenCredentials(client.AccessTokenCredentials):
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
+
+    @property
+    def use_24hour(self):
+        return self.config_core.get('time_format') == 'full'
 
     def __calendar_connect(self, msg=None):
         argv = sys.argv
@@ -107,7 +189,8 @@ class GoogleCalendarSkill(MycroftSkill):
             if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
                 d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
-                starttime = d.strftime('%H:%M')
+                starttime = nice_time(d, self.lang, True, self.use_24hour,
+                                      True)
                 startdate = d.strftime('%-d %B')
             else:
                 start = event['start']['date']
@@ -164,7 +247,8 @@ class GoogleCalendarSkill(MycroftSkill):
                     start = e['start'].get('dateTime', e['start'].get('date'))
                     d = datetime.strptime(remove_tz(start),
                                              '%Y-%m-%dT%H:%M:%S')
-                    starttime = d.strftime('%H:%M')
+                    starttime = nice_time(d, self.lang, True, self.use_24hour,
+                                          True)
                     if is_today(d) or is_tomorrow(d) or True:
                         data = {'appointment': e['summary'],
                                 'time': starttime}
