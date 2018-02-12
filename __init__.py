@@ -13,8 +13,17 @@ from datetime import datetime, timedelta
 from mycroft.util.parse import extract_datetime
 from mycroft.api import DeviceApi
 from requests import HTTPError
+from parsedatetime import Calendar
+import time
 
 UTC_TZ = u'+00:00'
+
+def is_gcalendar_reminder(event):
+    if 'reminders' in event and event['reminders'].get('useDefault') == False:
+        for override in event['reminders']['overrides']:
+            if override['method'] == 'popup':
+                return True
+    return False
 
 
 def nice_time(dt, lang="en-us", speech=True, use_24hour=False,
@@ -143,6 +152,9 @@ class MycroftTokenCredentials(client.AccessTokenCredentials):
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
+        if 'reminders' not in self.settings:
+            self.settings['reminders'] = []
+        self.gcal_reminders = []
 
     @property
     def use_24hour(self):
@@ -159,6 +171,7 @@ class GoogleCalendarSkill(MycroftSkill):
             self.service = discovery.build('calendar', 'v3', http=http)
             sys.argv = argv
             self.__register_intents()
+            self.__update_reminders()
             self.cancel_scheduled_event('calendar_connect')
         except HTTPError:
             LOG.info('No Credentials available')
@@ -184,17 +197,56 @@ class GoogleCalendarSkill(MycroftSkill):
             .build()
         self.register_intent(intent, self.get_first)
 
+    def __update_reminders(self):
+        now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        events = self.get_upcoming_events(now)
+        self.gcal_reminders = [e for e in events if is_gcalendar_reminder(e)]
+        LOG.info(self.gcal_reminders)
+
+    def __check_reminder(self, message):
+        now = time.time()
+        handled_reminders = []
+        for r in self.settings['reminders']:
+            if now > r[1]:
+                self.speak(r[0])
+                handled_reminders.append(r)
+
+        for r in handled_reminders:
+            self.settings['reminders'].remove(r)
+
+        # Check the gcalendar reminer events
+        handled_events = []
+        for event in self.gcal_reminders:
+            LOG.info(event)
+            start = event['start'].get('dateTime')
+            if not start:
+                continue
+            d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
+            since_epoch = time.mktime(d.timetuple())
+            if now > since_epoch:
+                self.speak(event['summary'])
+                handled_events.append(event)
+
+        for r in handled_events:
+            self.gcal_reminders.remove(r)
+
     def initialize(self):
+        LOG.info('GCALENDAR SKILL INITIALIzing!')
         self.schedule_event(self.__calendar_connect, datetime.now(),
                                       name='calendar_connect')
+        self.schedule_repeating_event(self.__check_reminder, datetime.now(),
+                                      120, name='reminder')
+        LOG.info('GCALENDAR SKILL INITIALIZED!')
+
+    def get_upcoming_events(self, utc_time, max_results=10):
+        eventsResult = self.service.events().list(
+            calendarId='primary', timeMin=utc_time, maxResults=max_results,
+            singleEvents=True, orderBy='startTime').execute()
+        return eventsResult.get('items', [])
 
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        eventsResult = self.service.events().list(
-            calendarId='primary', timeMin=now, maxResults=10,
-            singleEvents=True, orderBy='startTime').execute()
-        events = eventsResult.get('items', [])
-
+        events = self.get_upcoming_events(now)
         if not events:
             self.speak_dialog('NoNextAppointments')
         else:
@@ -307,7 +359,8 @@ class GoogleCalendarSkill(MycroftSkill):
         et = st + timedelta(hours=1)
         self.add_calendar_event(title, st, et)
 
-    def add_calendar_event(self, title, start_time, end_time, summary=None):
+    def add_calendar_event(self, title, start_time, end_time, summary=None,
+                           reminder=None):
         print type(start_time)
         start_time = start_time.strftime('%Y-%m-%dT%H:%M:00')
         stop_time = end_time.strftime('%Y-%m-%dT%H:%M:00')
@@ -322,13 +375,63 @@ class GoogleCalendarSkill(MycroftSkill):
             'dateTime': stop_time,
             'timeZone': 'UTC'
         }
+        if reminder:
+            event['reminders'] = {
+                'useDefault': False,
+                'overrides': [
+                    {
+                        'method': 'popup',
+                        'minutes': 15
+                    }
+                ]
+            }
         data = {'appointment': title}
         try:
             self.service.events()\
                 .insert(calendarId='primary', body=event).execute()
             self.speak_dialog('AddSucceeded', data)
-        except:
+        except Exception as e:
+            LOG.exception(e)
             self.speak_dialog('AddFailed', data)
+
+    @intent_file_handler('ReminderAt.intent')
+    def add_new_reminder(self, msg=None):
+        reminder = msg.data.get('reminder', None)
+        reminder_time = extract_datetime(msg.data['utterance'])[0] # start time
+        LOG.info(reminder_time)
+        # convert to UTC
+        self.speak_dialog('SavingReminder',
+                          {'timedate': nice_time(reminder_time)})
+
+        if not self.service:
+            self.__save_reminder_local(reminder, reminder_time)
+        else:
+            self.__save_reminder_gcalendar(reminder, reminder_time)
+
+    @intent_file_handler('ReminderIn.intent')
+    def add__reminder_in(self, msg=None):
+        reminder = msg.data.get('reminder', None)
+        reminder_time = Calendar().parseDT(msg.data['timedate'])[0]
+        LOG.info(reminder_time)
+        # convert to UTC
+        self.speak_dialog('SavingReminder',
+                          {'timedate': nice_time(reminder_time)})
+        if not self.service:
+            self.__save_reminder_local(reminder, reminder_time)
+        else:
+            self.__save_reminder_gcalendar(reminder, reminder_time)
+
+    def __save_reminder_local(self, reminder, reminder_time):
+        since_epoch = time.mktime(reminder_time.timetuple())
+        self.settings['reminders'].append((reminder, since_epoch))
+
+    def __save_reminder_gcalendar(self, reminder, reminder_time):
+        LOG.info('saving {} to gcalendar at {}'.format(reminder, reminder_time))
+        tz_offset = self.location['timezone']['offset']
+        utc_time = reminder_time - timedelta(seconds=tz_offset / 1000)
+        self.add_calendar_event(reminder, utc_time,
+                                utc_time + timedelta(minutes=30),
+                                reminder=True)
 
 
 def create_skill():
