@@ -366,14 +366,19 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
-    @intent_file_handler('Schedule')
+    @intent_file_handler('Schedule.intent')
     def add_new(self, message=None):
-        title = self.get_response('what\'s the new event')
-        start = self.get_response('when does it start')
-        end = self.get_response('when does it end')
-        st = extract_datetime(start)
-        et = extract_datetime(end)
-        self.add_calendar_event(title, start_time=st, end_time=et)
+        try:
+            title = self.get_response('WhatTitle')
+            start = self.get_response('WhenStart')
+            end = self.get_response('WhenEnd')
+            st = extract_datetime(start)[0]
+            st -= timedelta(seconds=self.location['timezone']['offset'] / 1000)
+            et = extract_datetime(end)[0]
+            et -= timedelta(seconds=self.location['timezone']['offset'] / 1000)
+            self.add_calendar_event(title, start_time=st, end_time=et)
+        except ValueError:
+            self.speak_dialog('EventCancelled')
 
     @intent_file_handler('ScheduleAt.intent')
     def add_new_quick(self, msg=None):
