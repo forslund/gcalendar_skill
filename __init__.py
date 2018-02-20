@@ -170,12 +170,29 @@ class GoogleCalendarSkill(MycroftSkill):
             http = self.credentials.authorize(httplib2.Http())
             self.service = discovery.build('calendar', 'v3', http=http)
             sys.argv = argv
+
+            # Load calendars
+            self.__load_calendars()
             self.__register_intents()
             self.__update_reminders()
             self.cancel_scheduled_event('calendar_connect')
         except HTTPError:
             LOG.info('No Credentials available')
             pass
+
+    def __load_calendars(self):
+        cal_list = self.service.calendarList().list().execute()
+        self.calendars = {format(cal['summary'].encode('utf-8')): cal
+                          for cal in cal_list['items']}
+
+        # Create mycroft reminders calendar if it doesn't exist
+        if 'Mycroft Reminders' not in self.calendars:
+            data = {
+                'summary': 'Mycroft Reminders',
+                'timeZone': 'UTC'
+            }
+            new_calendar = self.service.calendars().insert(body=data).execute()
+            self.caledars[new_calendar['summary']] = new_calendar
 
     def __register_intents(self):
         LOG.info('Loading calendar intents')
@@ -199,7 +216,7 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def __update_reminders(self):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        events = self.get_upcoming_events(now)
+        events = self.get_upcoming_events(now, calendar='Mycroft Reminders')
         self.gcal_reminders = [e for e in events if is_gcalendar_reminder(e)]
         LOG.info(self.gcal_reminders)
 
@@ -238,7 +255,19 @@ class GoogleCalendarSkill(MycroftSkill):
                                       120, name='reminder')
         LOG.info('GCALENDAR SKILL INITIALIZED!')
 
-    def get_upcoming_events(self, utc_time, max_results=10):
+    def get_upcoming_events(self, utc_time, max_results=10, calendar=None):
+        """Get upcoming events from the calendar.
+
+        Args:
+            utc_time: (somthing) Start time for retrieval
+            max_results: (int) Maximum number of results, defaults to 10.
+            calendar: (str) Name of calendar to fetch from, defaults to the
+                primary calendar.
+        Returns:
+            (list) list of calendar events.
+        """
+        calendar = self.calendars[calendar]['id'] if calendar else 'primary'
+
         eventsResult = self.service.events().list(
             calendarId='primary', timeMin=utc_time, maxResults=max_results,
             singleEvents=True, orderBy='startTime').execute()
@@ -361,9 +390,9 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def add_calendar_event(self, title, start_time, end_time, summary=None,
                            reminder=None):
-        print type(start_time)
         start_time = start_time.strftime('%Y-%m-%dT%H:%M:00')
         stop_time = end_time.strftime('%Y-%m-%dT%H:%M:00')
+        cal_id = 'primary'
         stop_time += UTC_TZ
         event = {}
         event['summary'] = title
@@ -376,6 +405,7 @@ class GoogleCalendarSkill(MycroftSkill):
             'timeZone': 'UTC'
         }
         if reminder:
+            cal_id = self.calendars['Mycroft Reminders']['id']
             event['reminders'] = {
                 'useDefault': False,
                 'overrides': [
@@ -388,7 +418,7 @@ class GoogleCalendarSkill(MycroftSkill):
         data = {'appointment': title}
         try:
             self.service.events()\
-                .insert(calendarId='primary', body=event).execute()
+                .insert(calendarId=cal_id, body=event).execute()
             self.speak_dialog('AddSucceeded', data)
         except Exception as e:
             LOG.exception(e)
