@@ -298,7 +298,7 @@ class GoogleCalendarSkill(MycroftSkill):
     def add_new_quick(self, msg=None):
         title = msg.data.get('appointmenttitle', None)
         if title is None:
-            print "NO TITLE"
+            self.log.debug("NO TITLE")
             return
 
         st = extract_datetime(msg.data['utterance'])[0] # start time
@@ -308,7 +308,6 @@ class GoogleCalendarSkill(MycroftSkill):
         self.add_calendar_event(title, st, et)
 
     def add_calendar_event(self, title, start_time, end_time, summary=None):
-        print type(start_time)
         start_time = start_time.strftime('%Y-%m-%dT%H:%M:00')
         stop_time = end_time.strftime('%Y-%m-%dT%H:%M:00')
         stop_time += UTC_TZ
