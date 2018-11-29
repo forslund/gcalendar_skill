@@ -279,13 +279,13 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def get_first(self, msg=None):
         d = extract_datetime(msg.data['utterance'])[0]
-        d = d.replace(hour=0, minute=0, second=1)
-        d_end = d.replace(hour=23, minute=59, second=59)
+        d = d.replace(hour=0, minute=0, second=1, tzinfo=None)
+        d_end = d.replace(hour=23, minute=59, second=59, tzinfo=None)
         d = d.isoformat() + 'Z'
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
-    @intent_file_handler('Schedule')
+    @intent_file_handler('Schedule.intent')
     def add_new(self, message=None):
         title = self.get_response('what\'s the new event')
         start = self.get_response('when does it start')
