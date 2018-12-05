@@ -10,6 +10,15 @@ Navigate to Mycroft's skills directory and clone this repository:
     $ cd /opt/mycroft/skills
     $ git clone https://github.com/forslund/gcalendar_skill.git
 
+### Installing requirements
+Navigate to gcalender_skill directory:
+
+    $ cd /opt/mycroft/skills/gcalendar_skill
+
+Install requirements as user (recommended):
+
+    $ pip3 install -r requirements.txt --user
+
 ### How To Authorize Calendar Access
 To authorize access to your calendar: 
 - Go to home.mycroft.ai and click on skills.
