@@ -4,6 +4,13 @@ A skill allowing Mycroft to access Google Calendar.
 ## Description 
 Fetches scheduled events from Google Calendar and allows adding events to your calendar.
 
+## Installation
+Navigate to Mycroft's skills directory and clone this repository:
+
+    $ cd /opt/mycroft/skills
+    $ git clone https://github.com/forslund/gcalendar_skill.git
+
+### How To Authorize Calendar Access
 To authorize access to your calendar: 
 - Go to home.mycroft.ai and click on skills.
 - Scroll down to Google Calendar
