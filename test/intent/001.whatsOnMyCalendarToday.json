@@ -1,0 +1,5 @@
+{
+    "utterance": "what's on my calendar today",
+    "intent_type": "GetDaysAppointmentsIntent",
+    "expected_dialog": "NoAppointmentsToday"
+}

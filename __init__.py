@@ -158,15 +158,14 @@ class GoogleCalendarSkill(MycroftSkill):
             http = self.credentials.authorize(httplib2.Http())
             self.service = discovery.build('calendar', 'v3', http=http)
             sys.argv = argv
-            self.__register_intents()
+            self.register_intents()
             self.cancel_scheduled_event('calendar_connect')
         except HTTPError:
             LOG.info('No Credentials available')
             pass
 
-    def __register_intents(self):
-        LOG.info('Loading calendar intents')
-        intent = IntentBuilder('GetNextAppointment')\
+    def register_intents(self):
+        intent = IntentBuilder('GetNextAppointmentIntent')\
             .require('NextKeyword')\
             .one_of('AppointmentKeyword', 'ScheduleKeyword')\
             .build()

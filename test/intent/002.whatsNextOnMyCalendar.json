@@ -1,0 +1,5 @@
+{
+    "utterance": "what's next on my calendar",
+    "intent_type": "GetNextAppointmentIntent",
+    "expected_dialog": "NoNextAppointments"
+}

@@ -1,0 +1,6 @@
+{
+    "utterance": "Add a new appointment to my calendar",
+    "intent_type": "Schedule.intent",
+    "expected_dialog": "AddSucceeded",
+    "responses": ["birthday", "tomorrow at 8", "tomorrow at 9"]
+}
