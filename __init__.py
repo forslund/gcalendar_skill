@@ -5,15 +5,14 @@ from mycroft.util.log import LOG
 
 import httplib2
 from googleapiclient import discovery
-from oauth2client import client
 
 import sys
 from tzlocal import get_localzone
 from datetime import datetime, timedelta
 from mycroft.util.parse import extract_datetime
-from mycroft.api import DeviceApi
 from requests import HTTPError
 
+from .mycroft_token_cred import MycroftTokenCredentials
 UTC_TZ = u'+00:00'
 
 
@@ -109,37 +108,6 @@ def is_wholeday_event(e):
 def remove_tz(string):
     return string[:-6]
 
-class MycroftTokenCredentials(client.AccessTokenCredentials):
-    def __init__(self, cred_id):
-        self.cred_id = cred_id
-        d = self.get_credentials()
-        super(MycroftTokenCredentials, self).__init__(d['access_token'],
-                                                      d['user_agent'])
-
-    def get_credentials(self):
-        """
-            Get credentials through backend. Will do a single retry for
-            if an HTTPError occurs.
-
-            Returns: dict with data received from backend
-        """
-        retry = False
-        try:
-            d = DeviceApi().get_oauth_token(self.cred_id)
-        except HTTPError:
-            retry = True
-        if retry:
-            d = DeviceApi().get_oauth_token(self.cred_id)
-        return d
-
-    def _refresh(self, http):
-        """
-            Override to handle refresh through mycroft backend.
-        """
-        d = self.get_credentials()
-        self.access_token = d['access_token']
-
-
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
@@ -158,15 +126,14 @@ class GoogleCalendarSkill(MycroftSkill):
             http = self.credentials.authorize(httplib2.Http())
             self.service = discovery.build('calendar', 'v3', http=http)
             sys.argv = argv
-            self.__register_intents()
+            self.register_intents()
             self.cancel_scheduled_event('calendar_connect')
         except HTTPError:
             LOG.info('No Credentials available')
             pass
 
-    def __register_intents(self):
-        LOG.info('Loading calendar intents')
-        intent = IntentBuilder('GetNextAppointment')\
+    def register_intents(self):
+        intent = IntentBuilder('GetNextAppointmentIntent')\
             .require('NextKeyword')\
             .one_of('AppointmentKeyword', 'ScheduleKeyword')\
             .build()
@@ -186,7 +153,7 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def initialize(self):
         self.schedule_event(self.__calendar_connect, datetime.now(),
-                                      name='calendar_connect')
+                            name='calendar_connect')
 
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
@@ -285,14 +252,22 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
+    @property
+    def utc_offset(self):
+        return timedelta(seconds=self.location['timezone']['offset'] / 1000)
+
     @intent_file_handler('Schedule.intent')
     def add_new(self, message=None):
-        title = self.get_response('what\'s the new event')
-        start = self.get_response('when does it start')
-        end = self.get_response('when does it end')
-        st = extract_datetime(start)
-        et = extract_datetime(end)
-        self.add_calendar_event(title, start_time=st, end_time=et)
+        title = self.get_response('whatsTheNewEvent')
+        start = self.get_response('whenDoesItStart')
+        end = self.get_response('whenDoesItEnd')
+        if title and start and end:
+            st = extract_datetime(start)
+            et = extract_datetime(end)
+            if st and et:
+                st = st[0] - self.utc_offset
+                et = et[0] - self.utc_offset
+                self.add_calendar_event(title, start_time=st, end_time=et)
 
     @intent_file_handler('ScheduleAt.intent')
     def add_new_quick(self, msg=None):
