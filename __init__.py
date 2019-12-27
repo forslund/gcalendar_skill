@@ -258,9 +258,9 @@ class GoogleCalendarSkill(MycroftSkill):
 
     @intent_file_handler('Schedule.intent')
     def add_new(self, message=None):
-        title = self.get_response('what\'s the new event')
-        start = self.get_response('when does it start')
-        end = self.get_response('when does it end')
+        title = self.get_response('whatsTheNewEvent')
+        start = self.get_response('whenDoesItStart')
+        end = self.get_response('whenDoesItEnd')
         if title and start and end:
             st = extract_datetime(start)
             et = extract_datetime(end)
