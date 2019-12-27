@@ -252,14 +252,22 @@ class GoogleCalendarSkill(MycroftSkill):
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
 
+    @property
+    def utc_offset(self):
+        return timedelta(seconds=self.location['timezone']['offset'] / 1000)
+
     @intent_file_handler('Schedule.intent')
     def add_new(self, message=None):
         title = self.get_response('what\'s the new event')
         start = self.get_response('when does it start')
         end = self.get_response('when does it end')
-        st = extract_datetime(start)
-        et = extract_datetime(end)
-        self.add_calendar_event(title, start_time=st, end_time=et)
+        if title and start and end:
+            st = extract_datetime(start)
+            et = extract_datetime(end)
+            if st and et:
+                st = st[0] - self.utc_offset
+                et = et[0] - self.utc_offset
+                self.add_calendar_event(title, start_time=st, end_time=et)
 
     @intent_file_handler('ScheduleAt.intent')
     def add_new_quick(self, msg=None):
