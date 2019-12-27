@@ -5,15 +5,14 @@ from mycroft.util.log import LOG
 
 import httplib2
 from googleapiclient import discovery
-from oauth2client import client
 
 import sys
 from tzlocal import get_localzone
 from datetime import datetime, timedelta
 from mycroft.util.parse import extract_datetime
-from mycroft.api import DeviceApi
 from requests import HTTPError
 
+from .mycroft_token_cred import MycroftTokenCredentials
 UTC_TZ = u'+00:00'
 
 
@@ -109,37 +108,6 @@ def is_wholeday_event(e):
 def remove_tz(string):
     return string[:-6]
 
-class MycroftTokenCredentials(client.AccessTokenCredentials):
-    def __init__(self, cred_id):
-        self.cred_id = cred_id
-        d = self.get_credentials()
-        super(MycroftTokenCredentials, self).__init__(d['access_token'],
-                                                      d['user_agent'])
-
-    def get_credentials(self):
-        """
-            Get credentials through backend. Will do a single retry for
-            if an HTTPError occurs.
-
-            Returns: dict with data received from backend
-        """
-        retry = False
-        try:
-            d = DeviceApi().get_oauth_token(self.cred_id)
-        except HTTPError:
-            retry = True
-        if retry:
-            d = DeviceApi().get_oauth_token(self.cred_id)
-        return d
-
-    def _refresh(self, http):
-        """
-            Override to handle refresh through mycroft backend.
-        """
-        d = self.get_credentials()
-        self.access_token = d['access_token']
-
-
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
@@ -185,7 +153,7 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def initialize(self):
         self.schedule_event(self.__calendar_connect, datetime.now(),
-                                      name='calendar_connect')
+                            name='calendar_connect')
 
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
