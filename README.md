@@ -1,35 +1,31 @@
-## Google Calendar skill
-A skill allowing Mycroft to access Google Calendar.
+# <img src='https://raw.githack.com/FortAwesome/Font-Awesome/master/svgs/solid/    calendar.svg' card_color='#8140DB' width='50' height='50' style='vertical-align:bottom'/> 
+Check your google calendar appointments.
 
-## Description 
-Fetches scheduled events from Google Calendar and allows adding events to your calendar.
+## About
+Fetches scheduled events from Google Calendar and supports the basics for adding events to the calendar.
 
-## Installation
-Navigate to Mycroft's skills directory and clone this repository:
+## Examples
+* "What's next on my calendar"
+* "What's on my calendar on thursday"
+* "Add have fun to my calendar at 7 in the evening on saturday"
 
-    $ cd /opt/mycroft/skills
-    $ git clone https://github.com/forslund/gcalendar_skill.git
+## Credits
+@forslund
 
-### Installing requirements
-Navigate to gcalender_skill directory:
+## Category
+**Daily**
 
-    $ cd /opt/mycroft/skills/gcalendar_skill
+## Tags
+#calendar
 
-Install requirements as user (recommended):
 
-    $ pip3 install -r requirements.txt --user
-
-### How To Authorize Calendar Access
-To authorize access to your calendar: 
+## Setup
+To authorize access to your calendar:
 - Go to home.mycroft.ai and click on skills.
 - Scroll down to Google Calendar
 - Click "Connect"
-- Log into your Google account and authorize the skill 
+- Log into your Google account and authorize the skill
 
-## Examples 
-* "what's next on my schedule"
-* "what's on my calendar on friday"
-* "add have fun to my calendar at 7 in the evening on saturday"
+## Troubleshooting
 
-## Credits 
-Mycroft AI
+Credentials stop working after an hour: This can occur if the authorization has been performed multiple times. You need to revoke the skill's access to your calendar. this can be done from https://myaccount.google.com/
