@@ -4,7 +4,8 @@ from requests import HTTPError
 from adapt.intent import IntentBuilder
 from mycroft import MycroftSkill, intent_file_handler
 from mycroft.util.log import LOG
-from mycroift.util.format import nice_time
+from mycroft.util.format import nice_time, nice_date
+from mycroft.util.time import to_utc
 
 from .mycroft_token_cred import MycroftTokenCredentials
 from .calendar import GoogleCalendar
@@ -16,14 +17,6 @@ def is_today(d):
 
 def is_tomorrow(d):
     return d.date() == datetime.today().date() + timedelta(days=1)
-
-
-def is_wholeday_event(e):
-    return 'dateTime' not in e['start']
-
-
-def remove_tz(string):
-    return string[:-6]
 
 
 class CalendarSkill(MycroftSkill):
@@ -74,12 +67,12 @@ class CalendarSkill(MycroftSkill):
         else:
             event = events[0]
             LOG.debug(event)
-            if not event.is_wholeday:
+            if not event.is_whole_day:
                 starttime = nice_time(event.start_time, self.lang, True,
                                       self.use_24hour, True)
-                startdate = starttime.date()
+                startdate = nice_date(event.start_time.date())
             else:
-                startdate = event.start_time.date()
+                startdate = nice_date(event.start_time.date())
                 starttime = None
             # Speak result
             if event.is_whole_day:
@@ -102,9 +95,10 @@ class CalendarSkill(MycroftSkill):
                         'time': starttime}
                 self.speak_dialog('NextAppointmentTomorrow', data)
             else:
-                data = {'appointment': event['summary'],
+                data = {'appointment': event.title,
                         'time': starttime,
                         'date': startdate}
+                self.log.info(data)
                 self.speak_dialog('NextAppointmentDate', data)
 
     def speak_interval(self, start, stop, max_results=None):
@@ -119,7 +113,7 @@ class CalendarSkill(MycroftSkill):
                 self.speak_dialog('NoAppointments')
         else:
             for e in events:
-                if is_wholeday_event(e):
+                if e.is_whole_day:
                     data = {'appointment': e.title}
                     self.speak_dialog('WholedayAppointment', data)
                 else:
@@ -156,8 +150,8 @@ class CalendarSkill(MycroftSkill):
             st = extract_datetime(start)
             et = extract_datetime(end)
             if st and et:
-                st = st[0] - self.utc_offset
-                et = et[0] - self.utc_offset
+                st = to_utc(st[0])
+                et = to_utc(et[0])
                 data = {'appointment': title}
                 if self.calendar.add_event(title, st, et):
                     self.speak_dialog('AddSucceeded', data)
@@ -173,11 +167,11 @@ class CalendarSkill(MycroftSkill):
 
         st = extract_datetime(msg.data['utterance'])[0]  # start time
         # convert to UTC
-        st -= timedelta(seconds=self.location['timezone']['offset'] / 1000)
+        st = to_utc(st)
         et = st + timedelta(hours=1)
-        self.calendar.add_event(title, st, et)
-        data = {}
-        if self.calendar.add_calendar_event(title, st, et):
+
+        data = {'appointment': title}
+        if self.calendar.add_event(title, st, et):
             self.speak_dialog('AddSucceeded', data)
         else:
             self.speak_dialog('AddFailed', data)
