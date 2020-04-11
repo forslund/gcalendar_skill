@@ -8,7 +8,7 @@ from mycroft.util.format import nice_time, nice_date
 from mycroft.util.time import to_utc
 
 from .mycroft_token_cred import MycroftTokenCredentials
-from .calendar import GoogleCalendar
+from .calendar_connections import Event, GoogleCalendar, DavCalendar
 
 
 def is_today(d):
@@ -25,16 +25,23 @@ class CalendarSkill(MycroftSkill):
         return self.config_core.get('time_format') == 'full'
 
     def __calendar_connect(self, msg=None):
-        try:
-            # Get token for this skill (id 4)
-            self.credentials = MycroftTokenCredentials(4)
-            LOG.info('Credentials: {}'.format(self.credentials))
-            self.calendar = GoogleCalendar(self.credentials)
+        if self.settings.get('username'):
+            self.log.info('Setting up CalDav Calendar')
+            self.calendar = DavCalendar(self.settings['url'],
+                                        self.settings['username'],
+                                        self.settings['password'])
             self.register_intents()
-            self.cancel_scheduled_event('calendar_connect')
-        except HTTPError:
-            LOG.info('No Credentials available')
-            pass
+        else:
+            try:
+                # Get token for this skill (id 4)
+                self.credentials = MycroftTokenCredentials(4)
+                LOG.info('Credentials: {}'.format(self.credentials))
+                self.calendar = GoogleCalendar(self.credentials)
+                self.register_intents()
+                self.cancel_scheduled_event('calendar_connect')
+            except HTTPError:
+                LOG.info('No Credentials available')
+                pass
 
     def register_intents(self):
         intent = IntentBuilder('GetNextAppointmentIntent')\
@@ -153,7 +160,8 @@ class CalendarSkill(MycroftSkill):
                 st = to_utc(st[0])
                 et = to_utc(et[0])
                 data = {'appointment': title}
-                if self.calendar.add_event(title, st, et):
+                event = Event(title, st, et)
+                if self.calendar.add_event(event):
                     self.speak_dialog('AddSucceeded', data)
                 else:
                     self.speak_dialog('AddFailed', data)

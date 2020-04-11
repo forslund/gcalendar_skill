@@ -1,0 +1,21 @@
+skillMetadata:
+  sections:
+    - name: Google Calendar
+      fields:
+      - name: Authorize
+        type: oauth
+        value: 4
+    - name: CalDav
+      fields:
+      - name: url
+        type: text
+        label: Url
+        value: ""
+      - name: username
+        type: text
+        label: Username
+        value: ""
+      - name: password
+        type: password
+        label: Password
+        value: ""
