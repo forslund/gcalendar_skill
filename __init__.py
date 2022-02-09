@@ -156,6 +156,13 @@ class GoogleCalendarSkill(MycroftSkill):
                             name='calendar_connect')
 
     def get_next_all_calendars(self, now):
+        """
+        Searches all calendars for the next event.
+        Searches only non-whole-day events.
+
+        Returns:
+            (event[]): array containing only the next event, empty if none is found
+        """
         calendarListResults = self.service.calendarList().list().execute()
         calendarList = []
         for result in calendarListResults.get('items', []):
@@ -168,7 +175,7 @@ class GoogleCalendarSkill(MycroftSkill):
                 calendarId=calendarId, timeMin=now, maxResults=10,
                 singleEvents=True, orderBy='startTime').execute()
             events = eventsResult.get('items', [])
-            if events != []:
+            if events and not is_wholeday_event(events[0]):
                 start = events[0]['start'].get('dateTime')
                 d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
                 if nextEvent is None:
