@@ -155,12 +155,42 @@ class GoogleCalendarSkill(MycroftSkill):
         self.schedule_event(self.__calendar_connect, datetime.now(),
                             name='calendar_connect')
 
+    def get_next_all_calendars(self, now):
+        calendarListResults = self.service.calendarList().list().execute()
+        calendarList = []
+        for result in calendarListResults.get('items', []):
+            calendarList.append(result.get('id'))
+        
+        nextEvent = None
+        minTime = None
+        for calendarId in calendarList:
+            eventsResult = self.service.events().list(
+                calendarId=calendarId, timeMin=now, maxResults=10,
+                singleEvents=True, orderBy='startTime').execute()
+            events = eventsResult.get('items', [])
+            if events != []:
+                start = events[0]['start'].get('dateTime')
+                d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
+                if nextEvent is None:
+                    nextEvent = events[0]
+                    minTime = d
+                elif (not (minTime is None)) and d < minTime:
+                    nextEvent = events[0]
+                    minTime = d
+        
+        if nextEvent is None:
+            return []
+        else:
+            return [nextEvent]
+
+
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        eventsResult = self.service.events().list(
-            calendarId='primary', timeMin=now, maxResults=10,
-            singleEvents=True, orderBy='startTime').execute()
-        events = eventsResult.get('items', [])
+        # eventsResult = self.service.events().list(
+        #     calendarId='primary', timeMin=now, maxResults=10,
+        #     singleEvents=True, orderBy='startTime').execute()
+        # events = eventsResult.get('items', [])
+        events = self.get_next_all_calendars(now)
 
         if not events:
             self.speak_dialog('NoNextAppointments')
