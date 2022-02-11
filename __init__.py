@@ -108,6 +108,9 @@ def is_wholeday_event(e):
 def remove_tz(string):
     return string[:-6]
 
+def wholeday_to_normal(string):
+    return string + 'T23:59:00'
+
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
@@ -158,7 +161,7 @@ class GoogleCalendarSkill(MycroftSkill):
     def get_next_all_calendars(self, now):
         """
         Searches all calendars for the next event.
-        Searches only non-whole-day events.
+        Searches only non-wholeday events and only in calenders which are active in the Calendar UI.
 
         Returns:
             (event[]): array containing only the next event, empty if none is found
@@ -166,7 +169,8 @@ class GoogleCalendarSkill(MycroftSkill):
         calendarListResults = self.service.calendarList().list().execute()
         calendarList = []
         for result in calendarListResults.get('items', []):
-            calendarList.append(result.get('id'))
+            if result.get('selected', False):
+                calendarList.append(result.get('id'))
         
         nextEvent = None
         minTime = None
@@ -175,15 +179,22 @@ class GoogleCalendarSkill(MycroftSkill):
                 calendarId=calendarId, timeMin=now, maxResults=10,
                 singleEvents=True, orderBy='startTime').execute()
             events = eventsResult.get('items', [])
-            if events and not is_wholeday_event(events[0]):
-                start = events[0]['start'].get('dateTime')
-                d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
-                if nextEvent is None:
-                    nextEvent = events[0]
-                    minTime = d
-                elif (not (minTime is None)) and d < minTime:
-                    nextEvent = events[0]
-                    minTime = d
+            if events:
+                event = None
+                # Search for first non-wholeday event
+                for ev in events:
+                    if not is_wholeday_event(ev):
+                        event = ev
+                        break
+                if event is not None:
+                    start = event['start'].get('dateTime')
+                    d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
+                    if nextEvent is None:
+                        nextEvent = event
+                        minTime = d
+                    elif (not (minTime is None)) and d < minTime:
+                        nextEvent = event
+                        minTime = d
         
         if nextEvent is None:
             return []
@@ -193,10 +204,6 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        # eventsResult = self.service.events().list(
-        #     calendarId='primary', timeMin=now, maxResults=10,
-        #     singleEvents=True, orderBy='startTime').execute()
-        # events = eventsResult.get('items', [])
         events = self.get_next_all_calendars(now)
 
         if not events:
