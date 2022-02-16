@@ -1,3 +1,4 @@
+from calendar import calendar
 from adapt.intent import IntentBuilder
 from mycroft import MycroftSkill, intent_file_handler
 from mycroft.messagebus.message import Message
@@ -108,8 +109,9 @@ def is_wholeday_event(e):
 def remove_tz(string):
     return string[:-6]
 
-def wholeday_to_normal(string):
-    return string + 'T23:59:00'
+def get_date_time(event):
+    start = event['start'].get('dateTime')
+    return datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
 
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
@@ -158,13 +160,9 @@ class GoogleCalendarSkill(MycroftSkill):
         self.schedule_event(self.__calendar_connect, datetime.now(),
                             name='calendar_connect')
 
-    def get_next_all_calendars(self, now):
+    def get_selected_calendars_ids(self):
         """
-        Searches all calendars for the next event.
-        Searches only non-wholeday events and only in calenders which are active in the Calendar UI.
-
-        Returns:
-            (event[]): array containing only the next event, empty if none is found
+        Returns an array of ids of all calendars which are selected in the Calendar UI.
         """
         calendarListResults = self.service.calendarList().list().execute()
         calendarList = []
@@ -172,39 +170,44 @@ class GoogleCalendarSkill(MycroftSkill):
             if result.get('selected', False):
                 calendarList.append(result.get('id'))
         
-        nextEvent = None
-        minTime = None
+        return calendarList
+
+    def get_interval_all_calendars(self, start, stop=None, max_results=None):
+        """
+        Searches all selected calendars for events using the provided interval and sorts them by start time.
+        Wholeday events are listed last.
+
+        Returns:
+            (event[]): All events sorted by start time.
+        """
+        calendarList = self.get_selected_calendars_ids()
+
+        allEvents = []
+        allWholedayEvents = []
+
+        # Collect all events
         for calendarId in calendarList:
             eventsResult = self.service.events().list(
-                calendarId=calendarId, timeMin=now, maxResults=10,
-                singleEvents=True, orderBy='startTime').execute()
+                calendarId=calendarId, timeMin=start, timeMax=stop,
+                singleEvents=True, orderBy='startTime',
+                maxResults=max_results).execute()
             events = eventsResult.get('items', [])
             if events:
-                event = None
-                # Search for first non-wholeday event
-                for ev in events:
-                    if not is_wholeday_event(ev):
-                        event = ev
-                        break
-                if event is not None:
-                    start = event['start'].get('dateTime')
-                    d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
-                    if nextEvent is None:
-                        nextEvent = event
-                        minTime = d
-                    elif (not (minTime is None)) and d < minTime:
-                        nextEvent = event
-                        minTime = d
+                for event in events:
+                    if not is_wholeday_event(event):
+                        allEvents.append(event)
+                    else:
+                        allWholedayEvents.append(event)
         
-        if nextEvent is None:
-            return []
-        else:
-            return [nextEvent]
+        # Sort events by start time
+        allEvents.sort(key=get_date_time)
+        allEvents.extend(allWholedayEvents)
 
+        return allEvents
 
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        events = self.get_next_all_calendars(now)
+        events = self.get_interval_all_calendars(now, max_results=4)
 
         if not events:
             self.speak_dialog('NoNextAppointments')
@@ -248,12 +251,9 @@ class GoogleCalendarSkill(MycroftSkill):
                         'date': startdate}
                 self.speak_dialog('NextAppointmentDate', data)
 
+
     def speak_interval(self, start, stop, max_results=None):
-        eventsResult = self.service.events().list(
-            calendarId='primary', timeMin=start, timeMax=stop,
-            singleEvents=True, orderBy='startTime',
-            maxResults=max_results).execute()
-        events = eventsResult.get('items', [])
+        events = self.get_interval_all_calendars(start, stop, max_results)
         if not events:
             LOG.debug(start)
             d = datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
