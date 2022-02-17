@@ -1,5 +1,5 @@
 from adapt.intent import IntentBuilder
-from mycroft import MycroftSkill, intent_file_handler
+from mycroft import MycroftSkill, intent_file_handler, intent_handler
 from mycroft.util.log import LOG
 
 import httplib2
@@ -249,6 +249,14 @@ class GoogleCalendarSkill(MycroftSkill):
         d = d.isoformat() + 'Z'
         d_end = d_end.isoformat() + 'Z'
         self.speak_interval(d, d_end, max_results=1)
+
+    @intent_handler('what.is.left.today.intent')
+    def get_left_today(self):
+        d = datetime.utcnow()
+        d_end = d.replace(hour=23, minute=59, second=59, tzinfo=None)
+        d = d.isoformat() + 'Z'
+        d_end = d_end.isoformat() + 'Z'
+        self.speak_interval(d, d_end)
 
     @property
     def utc_offset(self):
