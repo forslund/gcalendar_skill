@@ -212,7 +212,7 @@ class GoogleCalendarSkill(MycroftSkill):
         events = eventsResult.get('items', [])
         if not events:
             LOG.debug(start)
-            d = datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
+            d = datetime.strptime(start.split('.')[0] + 'Z', '%Y-%m-%dT%H:%M:%SZ')
             if is_today(d):
                 self.speak_dialog('NoAppointmentsToday')
             elif is_tomorrow(d):
