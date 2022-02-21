@@ -199,7 +199,8 @@ class DavCalendar(CalendarBase):
             List of Events.
         """
         events = self.calendar.date_search(start_time, end_time)
-        return [DavCalendar.to_event(e.data) for e in events]
+        return [DavCalendar.to_event(e.data) for e in events
+                if e.start_time > start_time]
 
     def add_event(self, event):
         """Add event to calendar.
