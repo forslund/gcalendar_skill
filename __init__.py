@@ -1,13 +1,11 @@
 from adapt.intent import IntentBuilder
 from mycroft import MycroftSkill, intent_file_handler
-from mycroft.messagebus.message import Message
 from mycroft.util.log import LOG
 
 import httplib2
 from googleapiclient import discovery
 
 import sys
-from tzlocal import get_localzone
 from datetime import datetime, timedelta
 from mycroft.util.parse import extract_datetime
 from requests import HTTPError
