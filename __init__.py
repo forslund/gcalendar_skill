@@ -14,6 +14,16 @@ from .mycroft_token_cred import MycroftTokenCredentials
 UTC_TZ = u'+00:00'
 
 
+def parse_google_datetime(input):
+    """Convert a datetime string from google calendar to datetime."""
+    # Remove decimals
+    work_string = input.split('.')[0]
+    # Remove Zulu indicator from the end of string if needed
+    if work_string[-1] == 'Z':
+        work_string = work_string[:-1]
+    # Convert to datetime
+    return datetime.strptime(work_string, '%Y-%m-%dT%H:%M:%S')
+
 def nice_time(dt, lang="en-us", speech=True, use_24hour=False,
               use_ampm=False):
     """
@@ -210,7 +220,7 @@ class GoogleCalendarSkill(MycroftSkill):
         events = eventsResult.get('items', [])
         if not events:
             LOG.debug(start)
-            d = datetime.strptime(start.split('.')[0], '%Y-%m-%dT%H:%M:%SZ')
+            d = parse_google_datetime(start)
             if is_today(d):
                 self.speak_dialog('NoAppointmentsToday')
             elif is_tomorrow(d):
