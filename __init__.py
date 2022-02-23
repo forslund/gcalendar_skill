@@ -1,16 +1,17 @@
-from adapt.intent import IntentBuilder
-from mycroft import MycroftSkill, intent_file_handler, intent_handler
-from mycroft.util.log import LOG
-
 import httplib2
-from googleapiclient import discovery
-
 import sys
+
 from datetime import datetime, timedelta
-from mycroft.util.parse import extract_datetime
+
+from adapt.intent import IntentBuilder
+from googleapiclient import discovery
 from requests import HTTPError
 
+from mycroft import MycroftSkill, intent_file_handler, intent_handler
+from mycroft.util.parse import extract_datetime
+
 from .mycroft_token_cred import MycroftTokenCredentials
+
 UTC_TZ = u'+00:00'
 
 
@@ -23,6 +24,7 @@ def parse_google_datetime(input):
         work_string = work_string[:-1]
     # Convert to datetime
     return datetime.strptime(work_string, '%Y-%m-%dT%H:%M:%S')
+
 
 def nice_time(dt, lang="en-us", speech=True, use_24hour=False,
               use_ampm=False):
@@ -113,12 +115,15 @@ def is_tomorrow(d):
 def is_wholeday_event(e):
     return 'dateTime' not in e['start']
 
+
 def remove_tz(string):
     return string[:-6]
+
 
 def get_date_time(event):
     start = event['start'].get('dateTime')
     return datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
+
 
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
@@ -134,14 +139,14 @@ class GoogleCalendarSkill(MycroftSkill):
         try:
             # Get token for this skill (id 4)
             self.credentials = MycroftTokenCredentials(4)
-            LOG.info('Credentials: {}'.format(self.credentials))
+            self.log.info('Credentials: {}'.format(self.credentials))
             http = self.credentials.authorize(httplib2.Http())
             self.service = discovery.build('calendar', 'v3', http=http)
             sys.argv = argv
             self.register_intents()
             self.cancel_scheduled_event('calendar_connect')
         except HTTPError:
-            LOG.info('No Credentials available')
+            self.log.info('No Credentials available')
             pass
 
     def register_intents(self):
@@ -169,48 +174,47 @@ class GoogleCalendarSkill(MycroftSkill):
 
     def get_selected_calendars_ids(self):
         """
-        Returns an array of ids of all calendars which are selected in the Calendar UI.
+        Returns an array of ids of all calendars which are selected in the
+        Calendar UI.
         """
-        calendarListResults = self.service.calendarList().list().execute()
-        calendarList = []
-        for result in calendarListResults.get('items', []):
+        calendar_list_results = self.service.calendarList().list().execute()
+        calendar_list = []
+        for result in calendar_list_results.get('items', []):
             if result.get('selected', False):
-                calendarList.append(result.get('id'))
-        
-        return calendarList
+                calendar_list.append(result.get('id'))
+
+        return calendar_list
 
     def get_interval_all_calendars(self, start, stop=None, max_results=None):
-        """
-        Searches all selected calendars for events using the provided interval and sorts them by start time.
-        Wholeday events are listed last.
+        """Searches all selected calendars for events in the provided interval.
+
+        The result is returned sorted by start time. Wholeday events are listed
+        last.
 
         Returns:
             (event[]): All events sorted by start time.
         """
-        calendarList = self.get_selected_calendars_ids()
-
-        allEvents = []
-        allWholedayEvents = []
-
+        calendar_list = self.get_selected_calendars_ids()
+        all_events = []
+        all_wholeday_events = []
         # Collect all events
-        for calendarId in calendarList:
-            eventsResult = self.service.events().list(
-                calendarId=calendarId, timeMin=start, timeMax=stop,
+        for calendar_id in calendar_list:
+            events_result = self.service.events().list(
+                calendarId=calendar_id, timeMin=start, timeMax=stop,
                 singleEvents=True, orderBy='startTime',
                 maxResults=max_results).execute()
-            events = eventsResult.get('items', [])
+            events = events_result.get('items', [])
             if events:
                 for event in events:
                     if not is_wholeday_event(event):
-                        allEvents.append(event)
+                        all_events.append(event)
                     else:
-                        allWholedayEvents.append(event)
-        
+                        all_wholeday_events.append(event)
         # Sort events by start time
-        allEvents.sort(key=get_date_time)
-        allEvents.extend(allWholedayEvents)
+        all_events.sort(key=get_date_time)
+        all_events.extend(all_wholeday_events)
 
-        return allEvents
+        return all_events
 
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
@@ -220,7 +224,7 @@ class GoogleCalendarSkill(MycroftSkill):
             self.speak_dialog('NoNextAppointments')
         else:
             event = events[0]
-            LOG.debug(event)
+            self.log.debug(event)
             if not is_wholeday_event(event):
                 start = event['start'].get('dateTime')
                 d = datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
@@ -258,11 +262,10 @@ class GoogleCalendarSkill(MycroftSkill):
                         'date': startdate}
                 self.speak_dialog('NextAppointmentDate', data)
 
-
     def speak_interval(self, start, stop, max_results=None):
         events = self.get_interval_all_calendars(start, stop, max_results)
         if not events:
-            LOG.debug(start)
+            self.log.debug(start)
             d = parse_google_datetime(start)
             if is_today(d):
                 self.speak_dialog('NoAppointmentsToday')
@@ -278,7 +281,7 @@ class GoogleCalendarSkill(MycroftSkill):
                 else:
                     start = e['start'].get('dateTime', e['start'].get('date'))
                     d = datetime.strptime(remove_tz(start),
-                                             '%Y-%m-%dT%H:%M:%S')
+                                          '%Y-%m-%dT%H:%M:%S')
                     starttime = nice_time(d, self.lang, True, self.use_24hour,
                                           True)
                     if is_today(d) or is_tomorrow(d) or True:
@@ -335,7 +338,7 @@ class GoogleCalendarSkill(MycroftSkill):
             self.log.debug("NO TITLE")
             return
 
-        st = extract_datetime(msg.data['utterance'])[0] # start time
+        st = extract_datetime(msg.data['utterance'])[0]  # start time
         # convert to UTC
         st -= timedelta(seconds=self.location['timezone']['offset'] / 1000)
         et = st + timedelta(hours=1)
@@ -360,7 +363,7 @@ class GoogleCalendarSkill(MycroftSkill):
             self.service.events()\
                 .insert(calendarId='primary', body=event).execute()
             self.speak_dialog('AddSucceeded', data)
-        except:
+        except Exception:
             self.speak_dialog('AddFailed', data)
 
 
