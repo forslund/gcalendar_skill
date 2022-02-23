@@ -9,6 +9,7 @@ from requests import HTTPError
 
 from mycroft import MycroftSkill, intent_file_handler, intent_handler
 from mycroft.util.parse import extract_datetime
+from mycroft.util.time import now_local
 
 from .mycroft_token_cred import MycroftTokenCredentials
 
@@ -289,13 +290,19 @@ class GoogleCalendarSkill(MycroftSkill):
                                 'time': starttime}
                         self.speak_dialog('NextAppointment', data)
 
+    def get_day_for_date(self, date):
+        date = date.replace(hour=0, minute=0, second=1, tzinfo=None)
+        date_end = date.replace(hour=23, minute=59, second=59, tzinfo=None)
+        date = date.isoformat() + 'Z'
+        date_end = date_end.isoformat() + 'Z'
+        self.speak_interval(date, date_end)
+
     def get_day(self, msg=None):
-        d = extract_datetime(msg.data['utterance'])[0]
-        d = d.replace(hour=0, minute=0, second=1, tzinfo=None)
-        d_end = d.replace(hour=23, minute=59, second=59, tzinfo=None)
-        d = d.isoformat() + 'Z'
-        d_end = d_end.isoformat() + 'Z'
-        self.speak_interval(d, d_end)
+        extracted_date = extract_datetime(msg.data['utterance'])
+        if extracted_date:
+            self.get_day_for_date(extracted_date[0])
+        else:
+            self.get_day_for_date(now_local())
         return
 
     def get_first(self, msg=None):
