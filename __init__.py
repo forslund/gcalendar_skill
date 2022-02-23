@@ -116,6 +116,10 @@ def is_wholeday_event(e):
 def remove_tz(string):
     return string[:-6]
 
+def get_date_time(event):
+    start = event['start'].get('dateTime')
+    return datetime.strptime(remove_tz(start), '%Y-%m-%dT%H:%M:%S')
+
 class GoogleCalendarSkill(MycroftSkill):
     def __init__(self):
         super(GoogleCalendarSkill, self).__init__('Google Calendar')
@@ -163,12 +167,54 @@ class GoogleCalendarSkill(MycroftSkill):
         self.schedule_event(self.__calendar_connect, datetime.now(),
                             name='calendar_connect')
 
+    def get_selected_calendars_ids(self):
+        """
+        Returns an array of ids of all calendars which are selected in the Calendar UI.
+        """
+        calendarListResults = self.service.calendarList().list().execute()
+        calendarList = []
+        for result in calendarListResults.get('items', []):
+            if result.get('selected', False):
+                calendarList.append(result.get('id'))
+        
+        return calendarList
+
+    def get_interval_all_calendars(self, start, stop=None, max_results=None):
+        """
+        Searches all selected calendars for events using the provided interval and sorts them by start time.
+        Wholeday events are listed last.
+
+        Returns:
+            (event[]): All events sorted by start time.
+        """
+        calendarList = self.get_selected_calendars_ids()
+
+        allEvents = []
+        allWholedayEvents = []
+
+        # Collect all events
+        for calendarId in calendarList:
+            eventsResult = self.service.events().list(
+                calendarId=calendarId, timeMin=start, timeMax=stop,
+                singleEvents=True, orderBy='startTime',
+                maxResults=max_results).execute()
+            events = eventsResult.get('items', [])
+            if events:
+                for event in events:
+                    if not is_wholeday_event(event):
+                        allEvents.append(event)
+                    else:
+                        allWholedayEvents.append(event)
+        
+        # Sort events by start time
+        allEvents.sort(key=get_date_time)
+        allEvents.extend(allWholedayEvents)
+
+        return allEvents
+
     def get_next(self, msg=None):
         now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-        eventsResult = self.service.events().list(
-            calendarId='primary', timeMin=now, maxResults=10,
-            singleEvents=True, orderBy='startTime').execute()
-        events = eventsResult.get('items', [])
+        events = self.get_interval_all_calendars(now, max_results=4)
 
         if not events:
             self.speak_dialog('NoNextAppointments')
@@ -212,12 +258,9 @@ class GoogleCalendarSkill(MycroftSkill):
                         'date': startdate}
                 self.speak_dialog('NextAppointmentDate', data)
 
+
     def speak_interval(self, start, stop, max_results=None):
-        eventsResult = self.service.events().list(
-            calendarId='primary', timeMin=start, timeMax=stop,
-            singleEvents=True, orderBy='startTime',
-            maxResults=max_results).execute()
-        events = eventsResult.get('items', [])
+        events = self.get_interval_all_calendars(start, stop, max_results)
         if not events:
             LOG.debug(start)
             d = parse_google_datetime(start)
