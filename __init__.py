@@ -1,7 +1,7 @@
 import httplib2
 import sys
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from adapt.intent import IntentBuilder
 from googleapiclient import discovery
@@ -25,6 +25,13 @@ def parse_google_datetime(input):
         work_string = work_string[:-1]
     # Convert to datetime
     return datetime.strptime(work_string, '%Y-%m-%dT%H:%M:%S')
+
+
+def zulu_time(dt):
+    """Convert datetime object to Zulu time ISO string."""
+    ret = dt.astimezone(timezone.utc)
+    ret = ret.replace(tzinfo=None)
+    return ret.isoformat() + 'Z'
 
 
 def nice_time(dt, lang="en-us", speech=True, use_24hour=False,
@@ -290,19 +297,19 @@ class GoogleCalendarSkill(MycroftSkill):
                                 'time': starttime}
                         self.speak_dialog('NextAppointment', data)
 
-    def get_day_for_date(self, date):
-        date = date.replace(hour=0, minute=0, second=1, tzinfo=None)
-        date_end = date.replace(hour=23, minute=59, second=59, tzinfo=None)
-        date = date.isoformat() + 'Z'
-        date_end = date_end.isoformat() + 'Z'
-        self.speak_interval(date, date_end)
+    def speak_events_for_date(self, date):
+        self.log.info(f'dt: {date}')
+        date = date.replace(hour=0, minute=0, second=1)
+        date_start = zulu_time(date)
+        date_end = zulu_time(date.replace(hour=23, minute=59, second=59))
+        self.speak_interval(date_start, date_end)
 
     def get_day(self, msg=None):
         extracted_date = extract_datetime(msg.data['utterance'])
         if extracted_date:
-            self.get_day_for_date(extracted_date[0])
+            self.speak_events_for_date(extracted_date[0])
         else:
-            self.get_day_for_date(now_local())
+            self.get_events_for_date(now_local())
         return
 
     def get_first(self, msg=None):
