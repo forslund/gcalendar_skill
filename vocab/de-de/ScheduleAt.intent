@@ -1,0 +1,17 @@
+füge {event} (am | um) {timedate} zu dem Kalender hinzu
+füge {event} zu dem Kalender (am | um) {timedate} hinzu
+füge (am | um) {timedate} {event} zu dem Kalender hinzu
+füge {event} (am | um) {timedate} zu meinem Kalender hinzu
+füge {event} zu meinem Kalender (am | um) {timedate} hinzu
+füge (am | um) {timedate} {event} zu meinem Kalender hinzu
+füge {event} (am | um) {timedate} zum Kalender hinzu
+füge (am | um) {timedate} {event} zum Kalender hinzu
+füge {event} zum Kalender (am | um) {timedate} hinzu
+speichere {event} auf meinem Kalender (am | um) {timedate}
+speichere (am | um) {timedate} {event} auf meinem Kalender
+speichere {event} (am | um) {timedate} auf meinem Kalender
+speichere {event} auf dem Kalender (am | um) {timedate}
+speichere (am | um) {timedate} {event} auf dem Kalender
+speichere {event} (am | um) {timedate} auf dem Kalender
+plane {event} (am | um) {timedate}
+plane (am | um) {timedate} {event}
